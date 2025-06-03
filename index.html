@@ -3,56 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Letter Generator - مولد الخطابات بالذكاء الاصطناعي</title>
+    <title>مولد الخطابات بالذكاء الاصطناعي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="icon" href="https://www.netzero.sa/wp-content/uploads/2023/09/cropped-netzero-favicon-32x32.png" type="image/png">
 </head>
 <body>
-    <header>
+    <header class="header">
         <nav class="navbar">
-            <div class="logo-container">
-                <img src="https://www.netzero.sa/wp-content/uploads/2023/09/netzero-logo.png" alt="Netzero Logo" class="logo">
-                <span class="app-title">AI Letter Generator</span>
+            <div class="nav-container">
+                <div class="logo">
+                    <img src="https://media.licdn.com/dms/image/v2/D4D0BAQF4bJhChNDPpw/company-logo_200_200/company-logo_200_200/0/1693724328555/nabatik_logo?e=2147483647&v=beta&t=DJcoQIeXKhJyJWGQvph4ciSFpaJC2wHU6PjYqpWxvOY" alt="شعار الشركة" class="logo-img">
+                    <h1>مولد الخطابات بالذكاء الاصطناعي</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link active">الرئيسية</a></li>
+                    <li><a href="create-letter.html" class="nav-link">إنشاء خطاب جديد</a></li>
+                    <li><a href="letter-records.html" class="nav-link">سجل الخطابات</a></li>
+                    <li><a href="review-letter.html" class="nav-link">مراجعة خطاب</a></li>
+                </ul>
+                <div class="nav-controls">
+                  <button class="theme-toggle" id="themeToggle" title="تغيير المظهر">
+                     <i class="fas fa-moon" id="themeIcon"></i>
+                   </button>
+            <div class="hamburger">
+             <span></span>
+             <span></span>
+             <span></span>
             </div>
-            <ul class="nav-links">
-                <li><a href="index.html">الرئيسية</a></li>
-                <li><a href="create-letter.html">إنشاء خطاب جديد</a></li>
-                <li><a href="letter-records.html">سجل الخطابات</a></li>
-                <li><a href="review-letter.html">مراجعة خطاب</a></li>
-            </ul>
-            <div class="theme-switcher">
-                <button id="theme-toggle-button">تبديل الوضع</button>
+            </div>
             </div>
         </nav>
     </header>
 
-    <main class="container">
-        <h1>مرحباً بك في مولد الخطابات بالذكاء الاصطناعي</h1>
-        <p>استخدم شريط التنقل أعلاه للبدء في إنشاء خطابات جديدة أو مراجعة السجلات.</p>
-        
-        <div class="features-container">
-            <div class="feature-card">
-                <h3>إنشاء خطاب جديد</h3>
-                <p>قم بإنشاء خطابات جديدة باستخدام الذكاء الاصطناعي بناءً على المعلومات التي تقدمها.</p>
-                <a href="create-letter.html" class="feature-button">ابدأ الآن</a>
+    <main class="main-content">
+        <section class="hero">
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h2>مرحباً بكم في مولد الخطابات بالذكاء الاصطناعي</h2>
+                    <p>أنشئ خطاباتك الرسمية بسهولة وسرعة باستخدام تقنيات الذكاء الاصطناعي المتطورة</p>
+                    <div class="hero-buttons">
+                        <a href="create-letter.html" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            إنشاء خطاب جديد
+                        </a>
+                        <a href="letter-records.html" class="btn btn-secondary">
+                            <i class="fas fa-history"></i>
+                            عرض السجلات
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <i class="fas fa-robot"></i>
+                </div>
             </div>
-            
-            <div class="feature-card">
-                <h3>سجل الخطابات</h3>
-                <p>استعرض جميع الخطابات التي تم إنشاؤها وقم بتصفيتها حسب النوع وحالة المراجعة.</p>
-                <a href="letter-records.html" class="feature-button">عرض السجل</a>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h3>الميزات الرئيسية</h3>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h4>إنشاء تلقائي</h4>
+                        <p>إنشاء الخطابات تلقائياً باستخدام الذكاء الاصطناعي</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-templates"></i>
+                        </div>
+                        <h4>قوالب متنوعة</h4>
+                        <p>مجموعة واسعة من القوالب المهنية</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h4>تصدير PDF</h4>
+                        <p>تحميل الخطابات بصيغة PDF عالية الجودة</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h4>سجل شامل</h4>
+                        <p>حفظ وإدارة جميع الخطابات المنشأة</p>
+                    </div>
+                </div>
             </div>
-            
-            <div class="feature-card">
-                <h3>مراجعة خطاب</h3>
-                <p>قم بمراجعة الخطابات وتحديث حالتها إلى جاهز للإرسال أو يحتاج إلى تحسينات.</p>
-                <a href="review-letter.html" class="feature-button">مراجعة الآن</a>
-            </div>
-        </div>
+        </section>
     </main>
 
-    <footer>
-        <p>&copy; 2025 AI Letter Generator. جميع الحقوق محفوظة.</p>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 مولد الخطابات بالذكاء الاصطناعي. جميع الحقوق محفوظة.</p>
+        </div>
     </footer>
 
     <script src="js/main.js"></script>

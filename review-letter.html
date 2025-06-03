@@ -3,83 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مراجعة خطاب - AI Letter Generator</title>
+    <title>مراجعة خطاب - مولد الخطابات بالذكاء الاصطناعي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="icon" href="https://www.netzero.sa/wp-content/uploads/2023/09/cropped-netzero-favicon-32x32.png" type="image/png">
 </head>
 <body>
-    <header>
+    <header class="header">
         <nav class="navbar">
-            <div class="logo-container">
-                <img src="https://www.netzero.sa/wp-content/uploads/2023/09/netzero-logo.png" alt="Netzero Logo" class="logo">
-                <span class="app-title">AI Letter Generator</span>
-            </div>
-            <ul class="nav-links">
-                <li><a href="index.html">الرئيسية</a></li>
-                <li><a href="create-letter.html">إنشاء خطاب جديد</a></li>
-                <li><a href="letter-records.html">سجل الخطابات</a></li>
-                <li><a href="review-letter.html" class="active">مراجعة خطاب</a></li>
-            </ul>
-            <div class="theme-switcher">
-                <button id="theme-toggle-button">تبديل الوضع</button>
+            <div class="nav-container">
+                <div class="logo">
+                    <img src="https://media.licdn.com/dms/image/v2/D4D0BAQF4bJhChNDPpw/company-logo_200_200/company-logo_200_200/0/1693724328555/nabatik_logo?e=2147483647&v=beta&t=DJcoQIeXKhJyJWGQvph4ciSFpaJC2wHU6PjYqpWxvOY" alt="شعار الشركة" class="logo-img">
+                    <h1>مولد الخطابات بالذكاء الاصطناعي</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="nav-link">الرئيسية</a></li>
+                    <li><a href="create-letter.html" class="nav-link">إنشاء خطاب جديد</a></li>
+                    <li><a href="letter-records.html" class="nav-link">سجل الخطابات</a></li>
+                    <li><a href="review-letter.html" class="nav-link active">مراجعة خطاب</a></li>
+                </ul>
+                <div class="nav-controls">
+                    <button class="theme-toggle" id="themeToggle" title="تغيير المظهر">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                    <div class="hamburger">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
             </div>
         </nav>
     </header>
 
-    <main class="container">
-        <h1>مراجعة خطاب</h1>
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h2><i class="fas fa-search"></i> مراجعة خطاب</h2>
+                <p id="letterIdDisplay" class="letter-id-display"><!-- Letter ID will be displayed here by JS --></p>
+            </div>
 
-        <div id="letter-selection" class="form-group">
-            <label for="select-letter">اختر خطابًا للمراجعة:</label>
-            <select id="select-letter" name="select-letter" required>
-                <option value="">اختر خطابًا...</option>
-                <!-- Options will be populated by JS from Google Sheet 'Submissions' -->
-            </select>
-            <button id="load-letter-button">تحميل الخطاب</button>
+            <div class="review-container">
+                <!-- Form removed, actions are handled by buttons -->
+                <div class="review-form">
+                    <div class="form-group">
+                        <label for="reviewerName">اسم المراجع *</label>
+                        <input type="text" id="reviewerName" required placeholder="أدخل اسم المراجع">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="letterToReview">الخطاب للمراجعة (قابل للتعديل)</label>
+                        <textarea id="letterToReview" rows="20" placeholder="جاري تحميل الخطاب..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reviewNotes">الملاحظات</label>
+                        <textarea id="reviewNotes" rows="5" placeholder="أضف ملاحظاتك هنا (مطلوبة في حالة التحسينات أو الرفض)..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="reviewCompleted">
+                            <span class="checkbox-custom"></span>
+                            تمت المراجعة (يجب تحديدها لتفعيل الأزرار أدناه)
+                        </label>
+                    </div>
+
+                    <div class="form-actions review-actions">
+                        <button type="button" class="btn btn-warning" id="needsImprovementBtn" disabled>
+                            <i class="fas fa-exclamation-triangle"></i>
+                            يحتاج إلى تحسينات
+                        </button>
+                        <button type="button" class="btn btn-success" id="readyToSendBtn" disabled>
+                            <i class="fas fa-check-circle"></i>
+                            جاهز للإرسال
+                        </button>
+                        <button type="button" class="btn btn-danger" id="rejectBtn" disabled>
+                            <i class="fas fa-times-circle"></i>
+                            مرفوض
+                        </button>
+                        <a href="letter-records.html" class="btn btn-secondary">
+                            <i class="fas fa-arrow-right"></i>
+                            العودة للسجلات
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <div id="review-form-container" style="display: none;"> <!-- Hidden initially -->
-            <form id="review-form">
-                <div class="form-group">
-                    <label for="reviewer-name">اسم المراجع:</label>
-                    <input type="text" id="reviewer-name" name="reviewer-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="letter-content">محتوى الخطاب:</label>
-                    <textarea id="letter-content" name="letter-content" rows="15" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="review-notes">الملاحظات:</label>
-                    <textarea id="review-notes" name="review-notes" rows="5"></textarea>
-                </div>
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="review-completed" name="review-completed">
-                    <label for="review-completed">تمت المراجعة</label>
-                </div>
-                <div class="review-actions">
-                    <button type="button" id="needs-improvement-button" class="review-button" disabled>يحتاج إلى تحسينات</button>
-                    <button type="button" id="ready-to-send-button" class="review-button success-button" disabled>جاهز للإرسال</button>
-                    <button type="button" id="reject-button" class="review-button danger-button" disabled>مرفوض</button>
-                </div>
-            </form>
-        </div>
-
-        <div id="no-letter-selected" class="message-box">
-            <p>يرجى اختيار خطاب للمراجعة من القائمة أعلاه.</p>
-        </div>
-
     </main>
 
-    <footer>
-        <p>&copy; 2025 AI Letter Generator. جميع الحقوق محفوظة.</p>
-    </footer>
-
-    <div id="loading-overlay" class="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p>جاري التحميل...</p>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>جاري التحميل...</p>
+        </div>
     </div>
 
     <script src="js/sheets.js"></script>
+    <script src="js/api.js"></script> <!-- Include if needed -->
     <script src="js/main.js"></script>
 </body>
 </html>

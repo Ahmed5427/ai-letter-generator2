@@ -1,531 +1,411 @@
-/**
- * Sheets.js - Handles Google Sheets integration for AI Letter Generator
- */
+// Google Sheets Integration
+const SPREADSHEET_ID = '1cLbTgbluZyWYHRouEgqHQuYQqKexHhu4st9ANzuaxGk'; // Replace with actual spreadsheet ID
+const SHEETS_API_KEY = 'AIzaSyBqF-nMxyZMrjmdFbULO9I_j75hXXaiq4A'; // Replace with your Google Sheets API key
 
-// Google Sheets API configuration
-const SHEET_ID = '1cLbTgbluZyWYHRouEgqHQuYQqKexHhu4st9ANzuaxGk';
-const SHEETS_API_KEY = 'AIzaSyBqF-nMxyZMrjmdFbULO9I_j75hXXaiq4A';
-const SHEETS_API_BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
+// Google Sheets API Base URL
+const SHEETS_BASE_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
 
-// Check if we're running on Netlify or other production environment
-const isNetlifyOrProduction = () => {
-    const hostname = window.location.hostname;
-    return hostname.includes('netlify.app') || 
-           hostname.includes('netlify.com') || 
-           !hostname.includes('localhost');
-};
+// Temporary override for testing
+const DEMO_MODE = true; // Set to false when you have real Google Sheets setup
 
-// Flag to force using mock data (set to true for Netlify)
-const USE_MOCK_DATA = isNetlifyOrProduction();
-
-/**
- * Initialize Google Sheets API
- */
-async function initSheetsAPI() {
-    console.log('Initializing Google Sheets API');
-    
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        console.log('Running on Netlify or production environment - using mock data');
-        await loadMockData();
-        // Show notification to user that mock data is being used
-        if (typeof showNotification === 'function') {
-            showNotification('تم استخدام بيانات تجريبية لعرض التطبيق. البيانات الفعلية غير متاحة حاليًا.', 'info');
-        }
-        return false;
+// Get Dropdown Options from Settings Sheet
+async function getDropdownOptionsAPI() {
+    if (DEMO_MODE) {
+        return getDemoDropdownOptions();
     }
     
     try {
-        // Test connection by fetching sheet metadata
-        const response = await fetch(`${SHEETS_API_BASE_URL}/${SHEET_ID}?key=${SHEETS_API_KEY}`);
-        
-        if (!response.ok) {
-            throw new Error(`Failed to connect to Google Sheets API: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('Successfully connected to Google Sheets API');
-        return true;
-    } catch (error) {
-        console.error('Error initializing Google Sheets API:', error);
-        // If API fails, fall back to mock data for development
-        await loadMockData();
-        return false;
-    }
-}
-
-// Mock data for development and fallback
-let mockSettingsData = {
-    letterTypes: ['طلب', 'استفسار', 'شكوى', 'اقتراح', 'تقرير'],
-    letterPurposes: ['دعم صيانة بئر مطار الملك فهد', 'طلب معلومات', 'تقديم خدمة', 'متابعة طلب سابق'],
-    letterStyles: ['رسمي', 'ودي', 'تقني', 'أكاديمي']
-};
-
-let mockSubmissionsData = [
-    {
-        id: 'LTR-2025-001',
-        date: '2025-06-01',
-        letterType: 'New',
-        letterTypeArabic: 'جديد',
-        reviewStatus: 'في الانتظار',
-        sendStatus: 'في الانتظار',
-        recipient: 'شركة التقنية المتطورة',
-        subject: 'طلب استفسار عن خدمات الشركة',
-        content: 'محتوى الخطاب الأول للتجربة...'
-    },
-    {
-        id: 'LTR-2025-002',
-        date: '2025-06-02',
-        letterType: 'Reply',
-        letterTypeArabic: 'رد',
-        reviewStatus: 'جاهز للإرسال',
-        sendStatus: 'في الانتظار',
-        recipient: 'وزارة الاتصالات',
-        subject: 'رد على استفسار بخصوص المشروع',
-        content: 'محتوى الخطاب الثاني للتجربة...'
-    },
-    {
-        id: 'LTR-2025-003',
-        date: '2025-06-03',
-        letterType: 'Follow Up',
-        letterTypeArabic: 'متابعة',
-        reviewStatus: 'يحتاج إلى تحسينات',
-        sendStatus: 'في الانتظار',
-        recipient: 'شركة الاتصالات السعودية',
-        subject: 'متابعة طلب الدعم الفني',
-        content: 'محتوى الخطاب الثالث للتجربة...'
-    }
-];
-
-/**
- * Load mock data for development
- */
-async function loadMockData() {
-    console.log('Loading mock data for development/fallback');
-    return true;
-}
-
-/**
- * Get letter types from Settings sheet
- * @returns {Promise<Array>} - Array of letter types
- */
-async function getLetterTypes() {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        return mockSettingsData.letterTypes;
-    }
-    
-    try {
-        // Try to fetch from Google Sheets API
         const response = await fetch(
-            `${SHEETS_API_BASE_URL}/${SHEET_ID}/values/Settings!B:B?key=${SHEETS_API_KEY}`
+            `${SHEETS_BASE_URL}/values/Settings!A:F?key=${SHEETS_API_KEY}`
         );
         
         if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
+            throw new Error('Failed to fetch dropdown options');
         }
         
         const data = await response.json();
+        const values = data.values;
         
-        // Extract values, skip header row
-        if (data.values && data.values.length > 1) {
-            // Filter out empty values and extract first column
-            return data.values.slice(1)
-                .filter(row => row.length > 0 && row[0].trim() !== '')
-                .map(row => row[0]);
-        } else {
-            // Fall back to mock data if no values
-            return mockSettingsData.letterTypes;
-        }
-    } catch (error) {
-        console.error('Error fetching letter types:', error);
-        // Fall back to mock data
-        return mockSettingsData.letterTypes;
-    }
-}
-
-/**
- * Get letter purposes from Settings sheet
- * @returns {Promise<Array>} - Array of letter purposes
- */
-async function getLetterPurposes() {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        return mockSettingsData.letterPurposes;
-    }
-    
-    try {
-        // Try to fetch from Google Sheets API
-        const response = await fetch(
-            `${SHEETS_API_BASE_URL}/${SHEET_ID}/values/Settings!C:C?key=${SHEETS_API_KEY}`
-        );
-        
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        if (!values || values.length < 2) {
+            throw new Error('No data found in Settings sheet');
         }
         
-        const data = await response.json();
+        // Skip header row
+        const rows = values.slice(1);
         
-        // Extract values, skip header row
-        if (data.values && data.values.length > 1) {
-            // Filter out empty values and extract first column
-            return data.values.slice(1)
-                .filter(row => row.length > 0 && row[0].trim() !== '')
-                .map(row => row[0]);
-        } else {
-            // Fall back to mock data if no values
-            return mockSettingsData.letterPurposes;
-        }
-    } catch (error) {
-        console.error('Error fetching letter purposes:', error);
-        // Fall back to mock data
-        return mockSettingsData.letterPurposes;
-    }
-}
-
-/**
- * Get letter styles from Settings sheet
- * @returns {Promise<Array>} - Array of letter styles
- */
-async function getLetterStyles() {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        return mockSettingsData.letterStyles;
-    }
-    
-    try {
-        // Try to fetch from Google Sheets API
-        const response = await fetch(
-            `${SHEETS_API_BASE_URL}/${SHEET_ID}/values/Settings!G:G?key=${SHEETS_API_KEY}`
-        );
+        const options = {
+            letterTypes: [],
+            letterCategories: [],
+            letterPurposes: [],
+            templates: []
+        };
         
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Extract values, skip header row
-        if (data.values && data.values.length > 1) {
-            // Filter out empty values and extract first column
-            return data.values.slice(1)
-                .filter(row => row.length > 0 && row[0].trim() !== '')
-                .map(row => row[0]);
-        } else {
-            // Fall back to mock data if no values
-            return mockSettingsData.letterStyles;
-        }
-    } catch (error) {
-        console.error('Error fetching letter styles:', error);
-        // Fall back to mock data
-        return mockSettingsData.letterStyles;
-    }
-}
-
-/**
- * Get all letters from Submissions sheet
- * @returns {Promise<Array>} - Array of letter records
- */
-async function getAllLetters() {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        return mockSubmissionsData;
-    }
-    
-    try {
-        // Try to fetch from Google Sheets API
-        const response = await fetch(
-            `${SHEETS_API_BASE_URL}/${SHEET_ID}/values/Submissions!A:K?key=${SHEETS_API_KEY}`
-        );
-        
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        // Extract values, skip header row
-        if (data.values && data.values.length > 1) {
-            // Map sheet data to our letter object structure
-            return data.values.slice(1).map(row => {
-                // Handle potential missing columns
-                while (row.length < 11) row.push('');
-                
-                // Map letter type to Arabic
-                let letterTypeArabic = 'جديد'; // Default
-                switch (row[3]) { // Column D (index 3)
-                    case 'Reply': letterTypeArabic = 'رد'; break;
-                    case 'Follow Up': letterTypeArabic = 'متابعة'; break;
-                    case 'Co-op': letterTypeArabic = 'تعاون'; break;
-                }
-                
-                return {
-                    id: row[0], // Column A
-                    date: row[1], // Column B
-                    letterType: row[3], // Column D
-                    letterTypeArabic: letterTypeArabic,
-                    reviewStatus: row[9] || 'في الانتظار', // Column J
-                    sendStatus: row[10] || 'في الانتظار', // Column K
-                    recipient: row[4], // Column E
-                    subject: row[5], // Column F
-                    content: row[7] || '' // Column H (assuming content is here)
-                };
-            });
-        } else {
-            // Fall back to mock data if no values
-            return mockSubmissionsData;
-        }
-    } catch (error) {
-        console.error('Error fetching letters:', error);
-        // Fall back to mock data
-        return mockSubmissionsData;
-    }
-}
-
-/**
- * Get letter by ID
- * @param {string} id - Letter ID
- * @returns {Promise<Object>} - Letter data
- */
-async function getLetterById(id) {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        const letter = mockSubmissionsData.find(letter => letter.id === id);
-        if (!letter) {
-            throw new Error(`Letter with ID ${id} not found in mock data`);
-        }
-        return letter;
-    }
-    
-    try {
-        // First try to get all letters
-        const letters = await getAllLetters();
-        
-        // Find the letter with matching ID
-        const letter = letters.find(letter => letter.id === id);
-        
-        if (!letter) {
-            throw new Error(`Letter with ID ${id} not found`);
-        }
-        
-        return letter;
-    } catch (error) {
-        console.error(`Error fetching letter with ID ${id}:`, error);
-        
-        // Fall back to mock data
-        const letter = mockSubmissionsData.find(letter => letter.id === id);
-        if (!letter) {
-            throw new Error(`Letter with ID ${id} not found in mock data`);
-        }
-        return letter;
-    }
-}
-
-/**
- * Search letters by recipient name or ID
- * @param {string} query - Search query
- * @returns {Promise<Array>} - Array of matching letter records
- */
-async function searchLetters(query) {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        if (!query) {
-            return mockSubmissionsData;
-        }
-        
-        const lowerQuery = query.toLowerCase();
-        return mockSubmissionsData.filter(letter => 
-            letter.id.toLowerCase().includes(lowerQuery) || 
-            letter.recipient.toLowerCase().includes(lowerQuery)
-        );
-    }
-    
-    try {
-        // Get all letters first
-        const letters = await getAllLetters();
-        
-        if (!query) {
-            return letters;
-        }
-        
-        // Filter by query
-        const lowerQuery = query.toLowerCase();
-        return letters.filter(letter => 
-            (letter.id && letter.id.toLowerCase().includes(lowerQuery)) || 
-            (letter.recipient && letter.recipient.toLowerCase().includes(lowerQuery))
-        );
-    } catch (error) {
-        console.error('Error searching letters:', error);
-        
-        // Fall back to mock data
-        if (!query) {
-            return mockSubmissionsData;
-        }
-        
-        const lowerQuery = query.toLowerCase();
-        return mockSubmissionsData.filter(letter => 
-            letter.id.toLowerCase().includes(lowerQuery) || 
-            letter.recipient.toLowerCase().includes(lowerQuery)
-        );
-    }
-}
-
-/**
- * Filter letters by type and review status
- * @param {string} type - Letter type filter
- * @param {string} reviewStatus - Review status filter
- * @returns {Promise<Array>} - Array of filtered letter records
- */
-async function filterLetters(type, reviewStatus) {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        return mockSubmissionsData.filter(letter => {
-            let matchesType = true;
-            let matchesStatus = true;
-            
-            if (type && type !== 'all') {
-                matchesType = letter.letterType === type;
-            }
-            
-            if (reviewStatus && reviewStatus !== 'all') {
-                matchesStatus = letter.reviewStatus === reviewStatus;
-            }
-            
-            return matchesType && matchesStatus;
+        rows.forEach(row => {
+            if (row[0]) options.letterTypes.push(row[0]);
+            if (row[1]) options.letterCategories.push(row[1]);
+            if (row[2]) options.letterPurposes.push(row[2]);
+            if (row[5]) options.templates.push(row[5]);
         });
-    }
-    
-    try {
-        // Get all letters first
-        const letters = await getAllLetters();
         
-        // Apply filters
-        return letters.filter(letter => {
-            let matchesType = true;
-            let matchesStatus = true;
-            
-            if (type && type !== 'all') {
-                matchesType = letter.letterType === type;
-            }
-            
-            if (reviewStatus && reviewStatus !== 'all') {
-                matchesStatus = letter.reviewStatus === reviewStatus;
-            }
-            
-            return matchesType && matchesStatus;
-        });
+        // Remove duplicates
+        options.letterTypes = [...new Set(options.letterTypes)];
+        options.letterCategories = [...new Set(options.letterCategories)];
+        options.letterPurposes = [...new Set(options.letterPurposes)];
+        options.templates = [...new Set(options.templates)];
+        
+        return options;
     } catch (error) {
-        console.error('Error filtering letters:', error);
-        
-        // Fall back to mock data
-        return mockSubmissionsData.filter(letter => {
-            let matchesType = true;
-            let matchesStatus = true;
-            
-            if (type && type !== 'all') {
-                matchesType = letter.letterType === type;
-            }
-            
-            if (reviewStatus && reviewStatus !== 'all') {
-                matchesStatus = letter.reviewStatus === reviewStatus;
-            }
-            
-            return matchesType && matchesStatus;
-        });
+        console.error('Error fetching dropdown options:', error);
+        return getDemoDropdownOptions();
     }
 }
 
-/**
- * Update letter review status
- * @param {string} id - Letter ID
- * @param {string} status - New review status
- * @param {string} reviewerName - Name of the reviewer
- * @param {string} notes - Review notes
- * @returns {Promise<boolean>} - Success status
- */
-async function updateLetterReviewStatus(id, status, reviewerName, notes) {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        console.log(`Updating letter ${id} review status to ${status} (mock data)`);
-        console.log(`Reviewer: ${reviewerName}`);
-        console.log(`Notes: ${notes}`);
+// Demo dropdown options
+function getDemoDropdownOptions() {
+    return {
+        letterTypes: ['جديد', 'رد', 'متابعة', 'تعاون'],
+        letterCategories: ['طلب', 'جدولة اجتماع', 'تهنئة', 'دعوة حضور'],
+        letterPurposes: [
+            'موافقة إقامة فعالية',
+            'استثمار وتشغيل مشتل',
+            'تسهيل إجراءات مشروع',
+            'تهنئة عيد فطر',
+            'دعوة خاصة لحضور حفل تدشين مبادرة الخبر خضراء ذكية',
+            'دعم صيانة بئر مطار الملك فهد',
+            'تهنئة على نجاح مؤتمر وشكر على دعم',
+            'بحث سبل التعاون'
+        ],
+        templates: ['رسمي', 'شبه رسمي', 'ودي']
+    };
+}
+
+// Save to Google Sheets (Submissions worksheet)
+async function saveToGoogleSheets(letterData) {
+    if (DEMO_MODE) {
+        // Save to localStorage for demo
+        const existingData = JSON.parse(localStorage.getItem('demoLetters') || '[]');
+        const newLetter = {
+            id: letterData.letterId || generateId(),
+            date: letterData.date || new Date().toLocaleDateString('ar-SA'),
+            subject: letterData.subject || '',
+            type: translateLetterTypeToEnglish(letterData.letterType) || '',
+            recipient: letterData.recipient || '',
+            template: letterData.template || '',
+            content: letterData.generatedContent || '',
+            category: letterData.letterCategory || '',
+            purpose: letterData.letterPurpose || '',
+            firstCorrespondence: letterData.firstCorrespondence || '',
+            reviewStatus: 'في الانتظار',
+            sendStatus: 'في الانتظار',
+            pdfUrl: ''
+        };
         
-        // Update mock data
-        const letterIndex = mockSubmissionsData.findIndex(letter => letter.id === id);
-        if (letterIndex !== -1) {
-            mockSubmissionsData[letterIndex].reviewStatus = status;
-        }
-        
-        return true;
+        existingData.unshift(newLetter);
+        localStorage.setItem('demoLetters', JSON.stringify(existingData));
+        return { success: true };
     }
     
     try {
-        // In a real implementation, this would update data in Google Sheets
-        // For now, we'll update mock data and log the action
-        console.log(`Updating letter ${id} review status to ${status}`);
-        console.log(`Reviewer: ${reviewerName}`);
-        console.log(`Notes: ${notes}`);
+        const values = [[
+            letterData.letterId || generateId(),
+            letterData.date || new Date().toLocaleDateString('ar-SA'),
+            letterData.subject || '',
+            translateLetterTypeToEnglish(letterData.letterType) || '',
+            letterData.recipient || '',
+            letterData.template || '',
+            letterData.generatedContent || '',
+            letterData.letterCategory || '',
+            letterData.letterPurpose || '',
+            letterData.firstCorrespondence || '',
+            'في الانتظار', // Review status
+            'في الانتظار', // Send status
+            ''             // PDF URL
+        ]];
         
-        // Update mock data
-        const letterIndex = mockSubmissionsData.findIndex(letter => letter.id === id);
-        if (letterIndex !== -1) {
-            mockSubmissionsData[letterIndex].reviewStatus = status;
+        const response = await fetch(
+            `${SHEETS_BASE_URL}/values/Submissions!A:L:append?valueInputOption=RAW&key=${SHEETS_API_KEY}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    values: values
+                })
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error('Failed to save to Google Sheets');
         }
         
-        return true;
+        return await response.json();
     } catch (error) {
-        console.error(`Error updating letter ${id} review status:`, error);
+        console.error('Error saving to Google Sheets:', error);
         throw error;
     }
 }
 
-/**
- * Delete letter
- * @param {string} id - Letter ID
- * @returns {Promise<boolean>} - Success status
- */
-async function deleteLetter(id) {
-    // If we're on Netlify or production, use mock data immediately
-    if (USE_MOCK_DATA) {
-        console.log(`Deleting letter ${id} (mock data)`);
-        
-        // Delete from mock data
-        const letterIndex = mockSubmissionsData.findIndex(letter => letter.id === id);
-        if (letterIndex !== -1) {
-            mockSubmissionsData.splice(letterIndex, 1);
+// Get Letter Records from Submissions Sheet
+async function getLetterRecordsAPI() {
+    if (DEMO_MODE) {
+        const demoData = localStorage.getItem('demoLetters');
+        if (demoData) {
+            return JSON.parse(demoData);
         }
-        
-        return true;
+        return getDemoRecords();
     }
     
     try {
-        // In a real implementation, this would delete data from Google Sheets
-        // For now, we'll delete from mock data and log the action
-        console.log(`Deleting letter ${id}`);
-        
-        // Delete from mock data
-        const letterIndex = mockSubmissionsData.findIndex(letter => letter.id === id);
-        if (letterIndex !== -1) {
-            mockSubmissionsData.splice(letterIndex, 1);
+        // First check if we have valid API credentials
+        if (!SHEETS_API_KEY || !SPREADSHEET_ID || SHEETS_API_KEY === 'your-api-key-here') {
+            console.warn('Google Sheets API credentials not configured, using demo data');
+            return getDemoRecords();
         }
         
-        return true;
+        const response = await fetch(
+            `${SHEETS_BASE_URL}/values/Submissions!A:L?key=${SHEETS_API_KEY}`
+        );
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const values = data.values;
+        
+        if (!values || values.length < 2) {
+            console.warn('No data found in Google Sheets, using demo data');
+            return getDemoRecords();
+        }
+        
+        // Skip header row and map data
+        const records = values.slice(1).map((row, index) => ({
+            id: row[0] || `DEMO-${index + 1}`,
+            date: row[1] || new Date().toLocaleDateString('ar-SA'),
+            subject: row[2] || 'موضوع تجريبي',
+            type: row[3] || 'جديد',
+            recipient: row[4] || 'مستلم تجريبي',
+            template: row[5] || 'رسمي',
+            content: row[6] || generateDemoLetterContent(),
+            category: row[7] || 'طلب',
+            purpose: row[8] || 'غرض تجريبي',
+            firstCorrespondence: row[9] || 'نعم',
+            reviewStatus: row[10] || 'في الانتظار',
+            sendStatus: row[11] || 'في الانتظار',
+            pdfUrl: row[12] || ''
+        }));
+        
+        return records.reverse(); // Show newest first
     } catch (error) {
-        console.error(`Error deleting letter ${id}:`, error);
+        console.error('Error fetching letter records:', error);
+        console.warn('Falling back to demo data');
+        return getDemoRecords();
+    }
+}
+
+// Generate demo records
+function getDemoRecords() {
+    return [
+        {
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            date: '2025-06-01 12:04:01',
+            subject: 'موافقة إقامة فعالية',
+            type: 'جديد',
+            recipient: 'شركة التقنية المتطورة',
+            template: 'رسمي',
+            content: generateDemoLetterContent('شركة التقنية المتطورة', 'موافقة إقامة فعالية'),
+            category: 'طلب',
+            purpose: 'موافقة إقامة فعالية',
+            firstCorrespondence: 'نعم',
+            reviewStatus: 'في الانتظار',
+            sendStatus: 'في الانتظار',
+            pdfUrl: ''
+        },
+        {
+            id: 'LTR-1736187841-ABC123',
+            date: '2025-06-02 14:30:15',
+            subject: 'تهنئة عيد فطر المبارك',
+            type: 'جديد',
+            recipient: 'مؤسسة الخير الاجتماعية',
+            template: 'ودي',
+            content: generateDemoLetterContent('مؤسسة الخير الاجتماعية', 'تهنئة عيد فطر المبارك'),
+            category: 'تهنئة',
+            purpose: 'تهنئة عيد فطر',
+            firstCorrespondence: 'نعم',
+            reviewStatus: 'تمت المراجعة',
+            sendStatus: 'تم الإرسال',
+            pdfUrl: ''
+        },
+        {
+            id: 'LTR-1736187842-DEF456',
+            date: '2025-06-03 09:15:30',
+            subject: 'طلب تعاون في مشروع البيئة',
+            type: 'متابعة',
+            recipient: 'وزارة البيئة والمياه والزراعة',
+            template: 'رسمي',
+            content: generateDemoLetterContent('وزارة البيئة والمياه والزراعة', 'طلب تعاون في مشروع البيئة'),
+            category: 'طلب',
+            purpose: 'بحث سبل التعاون',
+            firstCorrespondence: 'لا',
+            reviewStatus: 'يحتاج إلى تحسينات',
+            sendStatus: 'في الانتظار',
+            pdfUrl: ''
+        }
+    ];
+}
+
+// Generate demo letter content
+function generateDemoLetterContent(recipient = 'المستلم المحترم', subject = 'الموضوع') {
+    const currentDate = new Date().toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
+    });
+
+    return `بسم الله الرحمن الرحيم
+
+${currentDate}
+
+المحترمين / ${recipient}
+
+السلام عليكم ورحمة الله وبركاته
+
+الموضوع: ${subject}
+
+يسعدنا أن نتواصل معكم بخصوص ${subject}.
+
+نأمل منكم التكرم بالنظر في هذا الطلب والتعاون معنا في تحقيق الأهداف المشتركة. 
+
+إننا نتطلع إلى تعزيز العلاقات الطيبة بيننا وبناء شراكات استراتيجية تخدم المصالح المشتركة.
+
+شاكرين لكم حسن تعاونكم وتفهمكم.
+
+وتفضلوا بقبول فائق الاحترام والتقدير.
+
+المرسل: إدارة المشاريع
+التوقيع: _______________
+التاريخ: ${currentDate}`;
+}
+
+// Delete Record from Google Sheets
+async function deleteRecordAPI(recordId) {
+    if (DEMO_MODE) {
+        // Remove from localStorage for demo
+        const existingData = JSON.parse(localStorage.getItem('demoLetters') || '[]');
+        const updatedData = existingData.filter(letter => letter.id !== recordId);
+        localStorage.setItem('demoLetters', JSON.stringify(updatedData));
+        return { success: true };
+    }
+    
+    try {
+        // First, find the row index
+        const records = await getLetterRecordsAPI();
+        const recordIndex = records.findIndex(record => record.id === recordId);
+        
+        if (recordIndex === -1) {
+            throw new Error('Record not found');
+        }
+        
+        // Calculate actual row number (add 2: 1 for header, 1 for 1-based indexing)
+        const rowNumber = records.length - recordIndex + 1;
+        
+        // Delete the row
+        const response = await fetch(
+            `${SHEETS_BASE_URL}:batchUpdate?key=${SHEETS_API_KEY}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    requests: [{
+                        deleteDimension: {
+                            range: {
+                                sheetId: 0, // Assuming Submissions is the first sheet
+                                dimension: 'ROWS',
+                                startIndex: rowNumber - 1,
+                                endIndex: rowNumber
+                            }
+                        }
+                    }]
+                })
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete record');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error deleting record:', error);
         throw error;
     }
 }
 
-// Export the Sheets API functions
-window.sheets = {
-    initSheetsAPI,
-    getLetterTypes,
-    getLetterPurposes,
-    getLetterStyles,
-    getAllLetters,
-    getLetterById,
-    searchLetters,
-    filterLetters,
-    updateLetterReviewStatus,
-    deleteLetter
-};
+// Update Review Status in Google Sheets
+async function updateReviewStatusAPI(recordId, status, reviewer, notes) {
+    if (DEMO_MODE) {
+        // Update localStorage for demo
+        const existingData = JSON.parse(localStorage.getItem('demoLetters') || '[]');
+        const recordIndex = existingData.findIndex(letter => letter.id === recordId);
+        
+        if (recordIndex !== -1) {
+            existingData[recordIndex].reviewStatus = status;
+            existingData[recordIndex].reviewer = reviewer;
+            existingData[recordIndex].notes = notes;
+            existingData[recordIndex].reviewDate = new Date().toISOString();
+            localStorage.setItem('demoLetters', JSON.stringify(existingData));
+        }
+        
+        return { success: true };
+    }
+    
+    try {
+        // This would require finding the specific row and updating column J
+        // For now, we'll use a simplified approach
+        console.log('Updating review status in Google Sheets:', { recordId, status, reviewer, notes });
+                // In a real implementation, you'd need to:
+        // 1. Find the row with the matching recordId
+        // 2. Update the specific columns (J for review status, etc.)
+        // 3. Use the Google Sheets API to update the range
+        
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating review status:', error);
+        throw error;
+    }
+}
+
+// Utility Functions
+function translateLetterTypeToEnglish(arabicType) {
+    const translations = {
+        'جديد': 'New',
+        'رد': 'Reply',
+        'متابعة': 'Follow Up',
+        'تعاون': 'Co-op'
+    };
+    return translations[arabicType] || arabicType;
+}
+
+function translateLetterTypeToArabic(englishType) {
+    const translations = {
+        'New': 'جديد',
+        'Reply': 'رد',
+        'Follow Up': 'متابعة',
+        'Co-op': 'تعاون'
+    };
+    return translations[englishType] || englishType;
+}
+
+function generateId() {
+    return 'LTR-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+}
+
+// Export functions for testing
+if (typeof window !== 'undefined') {
+    window.getDemoRecords = getDemoRecords;
+    window.generateDemoLetterContent = generateDemoLetterContent;
+}

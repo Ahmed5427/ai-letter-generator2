@@ -4,87 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مراجعة خطاب - مولد الخطابات بالذكاء الاصطناعي</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <header class="header">
-        <nav class="navbar">
-            <div class="nav-container">
-                <div class="logo">
-                    <img src="https://media.licdn.com/dms/image/v2/D4D0BAQF4bJhChNDPpw/company-logo_200_200/company-logo_200_200/0/1693724328555/nabatik_logo?e=2147483647&v=beta&t=DJcoQIeXKhJyJWGQvph4ciSFpaJC2wHU6PjYqpWxvOY" alt="شعار الشركة" class="logo-img">
-                    <h1>مولد الخطابات بالذكاء الاصطناعي</h1>
-                </div>
-                <ul class="nav-menu">
-                    <li><a href="index.html" class="nav-link">الرئيسية</a></li>
-                    <li><a href="create-letter.html" class="nav-link">إنشاء خطاب جديد</a></li>
-                    <li><a href="letter-records.html" class="nav-link">سجل الخطابات</a></li>
-                    <li><a href="review-letter.html" class="nav-link active">مراجعة خطاب</a></li>
-                </ul>
-                <div class="nav-controls">
-        <button class="theme-toggle" id="themeToggle" title="تغيير المظهر">
-            <i class="fas fa-moon" id="themeIcon"></i>
-        </button>
-        <div class="hamburger">
-            <span></span>
-            <span></span>
-            <span></span>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-robot nav-logo"></i>
+                <span>مولد الخطابات بالذكاء الاصطناعي</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="index.html" class="nav-link">الرئيسية</a>
+                </li>
+                <li class="nav-item">
+                    <a href="create-letter.html" class="nav-link">إنشاء خطاب جديد</a>
+                </li>
+                <li class="nav-item">
+                    <a href="letter-records.html" class="nav-link">سجل الخطابات</a>
+                </li>
+                <li class="nav-item">
+                    <a href="review-letter.html" class="nav-link active">مراجعة خطاب</a>
+                </li>
+            </ul>
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
-            </div>
-            </div>
-        </nav>
-    </header>
+    </nav>
 
     <main class="main-content">
         <div class="container">
             <div class="page-header">
-                <h2><i class="fas fa-search"></i> مراجعة خطاب</h2>
-                <p id="letterIdDisplay" class="letter-id-display"></p>
+                <h1>
+                    <i class="fas fa-search"></i>
+                    مراجعة خطاب
+                </h1>
             </div>
 
-            <div class="review-container">
+            <div class="letter-selection" id="letterSelection">
+                <div class="form-group">
+                    <label for="selectLetter">اختر خطاب للمراجعة</label>
+                    <select id="selectLetter" name="selectLetter">
+                        <option value="">اختر خطاب...</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary" id="loadLetterBtn">
+                    <i class="fas fa-eye"></i>
+                    عرض الخطاب
+                </button>
+            </div>
+
+            <div class="review-section" id="reviewSection" style="display: none;">
                 <form id="reviewForm" class="review-form">
                     <div class="form-group">
                         <label for="reviewerName">اسم المراجع *</label>
-                        <input type="text" id="reviewerName" required placeholder="اسم المراجع">
+                        <input type="text" id="reviewerName" name="reviewerName" placeholder="أدخل اسم المراجع" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="letterToReview">الخطاب للمراجعة</label>
-                        <textarea id="letterToReview" rows="20" placeholder="سيتم عرض الخطاب هنا للمراجعة والتعديل..."></textarea>
+                        <label for="letterToReview">نص الخطاب</label>
+                        <textarea id="letterToReview" name="letterToReview" rows="15" placeholder="محتوى الخطاب للمراجعة..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label for="reviewNotes">الملاحظات</label>
-                        <textarea id="reviewNotes" rows="5" placeholder="أضف ملاحظاتك هنا..."></textarea>
+                        <textarea id="reviewNotes" name="reviewNotes" rows="4" placeholder="أضف ملاحظاتك هنا..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" id="reviewCompleted">
+                            <input type="checkbox" id="reviewCompleted" name="reviewCompleted">
                             <span class="checkbox-custom"></span>
                             تمت المراجعة
                         </label>
                     </div>
 
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-success" id="approveBtn">
-                            <i class="fas fa-check"></i>
-                            تمت المراجعة
-                        </button>
-                        <button type="button" class="btn btn-warning" id="needsImprovementBtn">
+                    <div class="review-actions">
+                        <button type="button" class="btn btn-warning" id="needsImprovementBtn" disabled>
                             <i class="fas fa-exclamation-triangle"></i>
                             يحتاج إلى تحسينات
                         </button>
-                        <button type="submit" class="btn btn-primary" id="proceedBtn" disabled>
-                            <i class="fas fa-arrow-left"></i>
-                            متابعة
+                        <button type="button" class="btn btn-success" id="readyToSendBtn" disabled>
+                            <i class="fas fa-check"></i>
+                            جاهز للإرسال
                         </button>
-                        <a href="letter-records.html" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right"></i>
-                            العودة للسجلات
-                        </a>
+                        <button type="button" class="btn btn-danger" id="rejectedBtn" disabled>
+                            <i class="fas fa-times"></i>
+                            مرفوض
+                        </button>
                     </div>
                 </form>
             </div>
@@ -93,5 +102,6 @@
 
     <script src="js/main.js"></script>
     <script src="js/sheets.js"></script>
+    <script src="js/api.js"></script>
 </body>
 </html>

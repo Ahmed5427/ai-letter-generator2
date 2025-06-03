@@ -1,411 +1,233 @@
-// Google Sheets Integration
-const SPREADSHEET_ID = '1cLbTgbluZyWYHRouEgqHQuYQqKexHhu4st9ANzuaxGk'; // Replace with actual spreadsheet ID
-const SHEETS_API_KEY = 'AIzaSyBqF-nMxyZMrjmdFbULO9I_j75hXXaiq4A'; // Replace with your Google Sheets API key
+// sheets.js - Functions for interacting with Google Sheets API
 
-// Google Sheets API Base URL
-const SHEETS_BASE_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
+const API_KEY = "AIzaSyBqF-nMxyZMrjmdFbULO9I_j75hXXaiq4A"; // User provided API Key
+const SPREADSHEET_ID = "1cLbTgbluZyWYHRouEgqHQuYQqKexHhu4st9ANzuaxGk"; // User provided Spreadsheet ID
+const BASE_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values`;
 
-// Temporary override for testing
-const DEMO_MODE = true; // Set to false when you have real Google Sheets setup
-
-// Get Dropdown Options from Settings Sheet
-async function getDropdownOptionsAPI() {
-    if (DEMO_MODE) {
-        return getDemoDropdownOptions();
-    }
-    
+/**
+ * Fetches data from a specified range in the Google Sheet.
+ * @param {string} range - The A1 notation of the range to retrieve (e.g., "Settings!B2:B").
+ * @returns {Promise<Array<Array<string>>>} - A promise that resolves to the sheet data as a 2D array.
+ */
+async function getSheetData(range) {
+    const url = `${BASE_URL}/${encodeURIComponent(range)}?key=${API_KEY}`;
+    console.log(`Fetching sheet data from: ${range}`);
     try {
-        const response = await fetch(
-            `${SHEETS_BASE_URL}/values/Settings!A:F?key=${SHEETS_API_KEY}`
-        );
-        
+        const response = await fetch(url);
         if (!response.ok) {
-            throw new Error('Failed to fetch dropdown options');
+            const errorData = await response.json();
+            console.error("Google Sheets API Error Response:", errorData);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.error.message}`);
         }
-        
         const data = await response.json();
-        const values = data.values;
-        
-        if (!values || values.length < 2) {
-            throw new Error('No data found in Settings sheet');
-        }
-        
-        // Skip header row
-        const rows = values.slice(1);
-        
+        console.log(`Successfully fetched data for range: ${range}`);
+        return data.values || []; // Return empty array if no values found
+    } catch (error) {
+        console.error(`Error fetching Google Sheet data for range ${range}:`, error);
+        // Provide a more user-friendly error or default value if needed
+        // For now, re-throw to be handled by the caller
+        throw error;
+    }
+}
+
+/**
+ * Fetches dropdown options from the 'Settings' sheet.
+ * @returns {Promise<object>} - A promise that resolves to an object containing arrays for each dropdown.
+ */
+async function getDropdownOptions() {
+    console.log("Fetching dropdown options...");
+    try {
+        // Fetch all required columns in one go if possible, or parallel requests
+        const letterTypeRange = "Settings!B2:B"; // نوع الخطاب
+        const purposeRange = "Settings!C2:C";    // الغرض من الخطاب
+        const toneRange = "Settings!G2:G";       // الأسلوب
+
+        // Using Promise.all to fetch concurrently
+        const [letterTypeData, purposeData, toneData] = await Promise.all([
+            getSheetData(letterTypeRange),
+            getSheetData(purposeRange),
+            getSheetData(toneRange)
+        ]);
+
+        // Flatten the 2D array returned by the API into a 1D array of options
         const options = {
-            letterTypes: [],
-            letterCategories: [],
-            letterPurposes: [],
-            templates: []
+            letterTypes: letterTypeData.flat().filter(opt => opt), // Filter out empty strings
+            purposes: purposeData.flat().filter(opt => opt),
+            tones: toneData.flat().filter(opt => opt)
         };
-        
-        rows.forEach(row => {
-            if (row[0]) options.letterTypes.push(row[0]);
-            if (row[1]) options.letterCategories.push(row[1]);
-            if (row[2]) options.letterPurposes.push(row[2]);
-            if (row[5]) options.templates.push(row[5]);
-        });
-        
-        // Remove duplicates
-        options.letterTypes = [...new Set(options.letterTypes)];
-        options.letterCategories = [...new Set(options.letterCategories)];
-        options.letterPurposes = [...new Set(options.letterPurposes)];
-        options.templates = [...new Set(options.templates)];
-        
+        console.log("Dropdown options fetched:", options);
         return options;
     } catch (error) {
-        console.error('Error fetching dropdown options:', error);
-        return getDemoDropdownOptions();
+        console.error("Error fetching dropdown options:", error);
+        // Return empty options or handle error appropriately
+        return { letterTypes: [], purposes: [], tones: [] };
     }
 }
 
-// Demo dropdown options
-function getDemoDropdownOptions() {
-    return {
-        letterTypes: ['جديد', 'رد', 'متابعة', 'تعاون'],
-        letterCategories: ['طلب', 'جدولة اجتماع', 'تهنئة', 'دعوة حضور'],
-        letterPurposes: [
-            'موافقة إقامة فعالية',
-            'استثمار وتشغيل مشتل',
-            'تسهيل إجراءات مشروع',
-            'تهنئة عيد فطر',
-            'دعوة خاصة لحضور حفل تدشين مبادرة الخبر خضراء ذكية',
-            'دعم صيانة بئر مطار الملك فهد',
-            'تهنئة على نجاح مؤتمر وشكر على دعم',
-            'بحث سبل التعاون'
-        ],
-        templates: ['رسمي', 'شبه رسمي', 'ودي']
-    };
-}
-
-// Save to Google Sheets (Submissions worksheet)
-async function saveToGoogleSheets(letterData) {
-    if (DEMO_MODE) {
-        // Save to localStorage for demo
-        const existingData = JSON.parse(localStorage.getItem('demoLetters') || '[]');
-        const newLetter = {
-            id: letterData.letterId || generateId(),
-            date: letterData.date || new Date().toLocaleDateString('ar-SA'),
-            subject: letterData.subject || '',
-            type: translateLetterTypeToEnglish(letterData.letterType) || '',
-            recipient: letterData.recipient || '',
-            template: letterData.template || '',
-            content: letterData.generatedContent || '',
-            category: letterData.letterCategory || '',
-            purpose: letterData.letterPurpose || '',
-            firstCorrespondence: letterData.firstCorrespondence || '',
-            reviewStatus: 'في الانتظار',
-            sendStatus: 'في الانتظار',
-            pdfUrl: ''
-        };
-        
-        existingData.unshift(newLetter);
-        localStorage.setItem('demoLetters', JSON.stringify(existingData));
-        return { success: true };
-    }
-    
+/**
+ * Fetches all letter records from the 'Submissions' sheet.
+ * @returns {Promise<Array<object>>} - A promise that resolves to an array of record objects.
+ */
+async function getLetterRecords() {
+    // Assuming headers are in row 1: A=ID, B=Date, C=?, D=Type, E=Recipient, F=Subject, G=??, H=??, I=??, J=ReviewStatus, K=SendStatus
+    // Fetching A2:K to get all relevant data
+    const range = "Submissions!A2:K";
+    console.log("Fetching letter records...");
     try {
-        const values = [[
-            letterData.letterId || generateId(),
-            letterData.date || new Date().toLocaleDateString('ar-SA'),
-            letterData.subject || '',
-            translateLetterTypeToEnglish(letterData.letterType) || '',
-            letterData.recipient || '',
-            letterData.template || '',
-            letterData.generatedContent || '',
-            letterData.letterCategory || '',
-            letterData.letterPurpose || '',
-            letterData.firstCorrespondence || '',
-            'في الانتظار', // Review status
-            'في الانتظار', // Send status
-            ''             // PDF URL
-        ]];
-        
-        const response = await fetch(
-            `${SHEETS_BASE_URL}/values/Submissions!A:L:append?valueInputOption=RAW&key=${SHEETS_API_KEY}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    values: values
-                })
-            }
-        );
-        
-        if (!response.ok) {
-            throw new Error('Failed to save to Google Sheets');
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error('Error saving to Google Sheets:', error);
-        throw error;
-    }
-}
-
-// Get Letter Records from Submissions Sheet
-async function getLetterRecordsAPI() {
-    if (DEMO_MODE) {
-        const demoData = localStorage.getItem('demoLetters');
-        if (demoData) {
-            return JSON.parse(demoData);
-        }
-        return getDemoRecords();
-    }
-    
-    try {
-        // First check if we have valid API credentials
-        if (!SHEETS_API_KEY || !SPREADSHEET_ID || SHEETS_API_KEY === 'your-api-key-here') {
-            console.warn('Google Sheets API credentials not configured, using demo data');
-            return getDemoRecords();
-        }
-        
-        const response = await fetch(
-            `${SHEETS_BASE_URL}/values/Submissions!A:L?key=${SHEETS_API_KEY}`
-        );
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const values = data.values;
-        
-        if (!values || values.length < 2) {
-            console.warn('No data found in Google Sheets, using demo data');
-            return getDemoRecords();
-        }
-        
-        // Skip header row and map data
-        const records = values.slice(1).map((row, index) => ({
-            id: row[0] || `DEMO-${index + 1}`,
-            date: row[1] || new Date().toLocaleDateString('ar-SA'),
-            subject: row[2] || 'موضوع تجريبي',
-            type: row[3] || 'جديد',
-            recipient: row[4] || 'مستلم تجريبي',
-            template: row[5] || 'رسمي',
-            content: row[6] || generateDemoLetterContent(),
-            category: row[7] || 'طلب',
-            purpose: row[8] || 'غرض تجريبي',
-            firstCorrespondence: row[9] || 'نعم',
-            reviewStatus: row[10] || 'في الانتظار',
-            sendStatus: row[11] || 'في الانتظار',
-            pdfUrl: row[12] || ''
+        const values = await getSheetData(range);
+        // Map array data to objects based on column index (adjust if columns change)
+        const records = values.map(row => ({
+            id: row[0] || '',          // Column A
+            date: row[1] || '',        // Column B
+            type: row[3] || '',        // Column D
+            recipient: row[4] || '',   // Column E
+            subject: row[5] || '',     // Column F
+            reviewStatus: row[9] || '', // Column J
+            sendStatus: row[10] || '', // Column K
+            // Store the original row index (adding 2 because sheet is 1-based and data starts from row 2)
+            rowIndex: values.indexOf(row) + 2
         }));
-        
-        return records.reverse(); // Show newest first
+        console.log(`Fetched ${records.length} letter records.`);
+        return records;
     } catch (error) {
-        console.error('Error fetching letter records:', error);
-        console.warn('Falling back to demo data');
-        return getDemoRecords();
+        console.error("Error fetching letter records:", error);
+        return []; // Return empty array on error
     }
 }
 
-// Generate demo records
-function getDemoRecords() {
-    return [
-        {
-            id: '550e8400-e29b-41d4-a716-446655440000',
-            date: '2025-06-01 12:04:01',
-            subject: 'موافقة إقامة فعالية',
-            type: 'جديد',
-            recipient: 'شركة التقنية المتطورة',
-            template: 'رسمي',
-            content: generateDemoLetterContent('شركة التقنية المتطورة', 'موافقة إقامة فعالية'),
-            category: 'طلب',
-            purpose: 'موافقة إقامة فعالية',
-            firstCorrespondence: 'نعم',
-            reviewStatus: 'في الانتظار',
-            sendStatus: 'في الانتظار',
-            pdfUrl: ''
-        },
-        {
-            id: 'LTR-1736187841-ABC123',
-            date: '2025-06-02 14:30:15',
-            subject: 'تهنئة عيد فطر المبارك',
-            type: 'جديد',
-            recipient: 'مؤسسة الخير الاجتماعية',
-            template: 'ودي',
-            content: generateDemoLetterContent('مؤسسة الخير الاجتماعية', 'تهنئة عيد فطر المبارك'),
-            category: 'تهنئة',
-            purpose: 'تهنئة عيد فطر',
-            firstCorrespondence: 'نعم',
-            reviewStatus: 'تمت المراجعة',
-            sendStatus: 'تم الإرسال',
-            pdfUrl: ''
-        },
-        {
-            id: 'LTR-1736187842-DEF456',
-            date: '2025-06-03 09:15:30',
-            subject: 'طلب تعاون في مشروع البيئة',
-            type: 'متابعة',
-            recipient: 'وزارة البيئة والمياه والزراعة',
-            template: 'رسمي',
-            content: generateDemoLetterContent('وزارة البيئة والمياه والزراعة', 'طلب تعاون في مشروع البيئة'),
-            category: 'طلب',
-            purpose: 'بحث سبل التعاون',
-            firstCorrespondence: 'لا',
-            reviewStatus: 'يحتاج إلى تحسينات',
-            sendStatus: 'في الانتظار',
-            pdfUrl: ''
-        }
-    ];
-}
+/**
+ * Updates the review status for a specific row in the 'Submissions' sheet.
+ * NOTE: This requires write permissions, which usually need OAuth 2.0, not just an API key.
+ * This function might fail if the API key doesn't have write access or the sheet isn't public writable.
+ * @param {number} rowIndex - The row number to update (1-based index).
+ * @param {string} status - The new review status.
+ * @returns {Promise<object>} - The API response.
+ */
+async function updateReviewStatus(rowIndex, status) {
+    const range = `Submissions!J${rowIndex}`; // Target cell for review status (Column J)
+    const url = `${BASE_URL}/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+    console.log(`Attempting to update review status for row ${rowIndex} to '${status}' at range ${range}`);
 
-// Generate demo letter content
-function generateDemoLetterContent(recipient = 'المستلم المحترم', subject = 'الموضوع') {
-    const currentDate = new Date().toLocaleDateString('ar-SA', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long'
-    });
+    // !!! Authorization Warning !!!
+    // Updating usually requires OAuth2.0. This fetch might fail.
+    // The backend (archive API) might be responsible for sheet updates.
+    console.warn("Update operation might fail due to permissions. API Key might only allow read access.");
 
-    return `بسم الله الرحمن الرحيم
-
-${currentDate}
-
-المحترمين / ${recipient}
-
-السلام عليكم ورحمة الله وبركاته
-
-الموضوع: ${subject}
-
-يسعدنا أن نتواصل معكم بخصوص ${subject}.
-
-نأمل منكم التكرم بالنظر في هذا الطلب والتعاون معنا في تحقيق الأهداف المشتركة. 
-
-إننا نتطلع إلى تعزيز العلاقات الطيبة بيننا وبناء شراكات استراتيجية تخدم المصالح المشتركة.
-
-شاكرين لكم حسن تعاونكم وتفهمكم.
-
-وتفضلوا بقبول فائق الاحترام والتقدير.
-
-المرسل: إدارة المشاريع
-التوقيع: _______________
-التاريخ: ${currentDate}`;
-}
-
-// Delete Record from Google Sheets
-async function deleteRecordAPI(recordId) {
-    if (DEMO_MODE) {
-        // Remove from localStorage for demo
-        const existingData = JSON.parse(localStorage.getItem('demoLetters') || '[]');
-        const updatedData = existingData.filter(letter => letter.id !== recordId);
-        localStorage.setItem('demoLetters', JSON.stringify(updatedData));
-        return { success: true };
-    }
-    
     try {
-        // First, find the row index
-        const records = await getLetterRecordsAPI();
-        const recordIndex = records.findIndex(record => record.id === recordId);
-        
-        if (recordIndex === -1) {
-            throw new Error('Record not found');
-        }
-        
-        // Calculate actual row number (add 2: 1 for header, 1 for 1-based indexing)
-        const rowNumber = records.length - recordIndex + 1;
-        
-        // Delete the row
-        const response = await fetch(
-            `${SHEETS_BASE_URL}:batchUpdate?key=${SHEETS_API_KEY}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    requests: [{
-                        deleteDimension: {
-                            range: {
-                                sheetId: 0, // Assuming Submissions is the first sheet
-                                dimension: 'ROWS',
-                                startIndex: rowNumber - 1,
-                                endIndex: rowNumber
-                            }
-                        }
-                    }]
-                })
-            }
-        );
-        
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                // 'Authorization': 'Bearer YOUR_OAUTH2_TOKEN' // Typically needed
+            },
+            body: JSON.stringify({
+                values: [[status]]
+            })
+        });
+
         if (!response.ok) {
-            throw new Error('Failed to delete record');
+            const errorData = await response.json();
+            console.error("Google Sheets API Update Error Response:", errorData);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.error.message}`);
         }
-        
-        return await response.json();
+
+        const data = await response.json();
+        console.log(`Successfully updated review status for row ${rowIndex}:`, data);
+        return data;
     } catch (error) {
-        console.error('Error deleting record:', error);
+        console.error(`Error updating review status for row ${rowIndex}:`, error);
         throw error;
     }
 }
 
-// Update Review Status in Google Sheets
-async function updateReviewStatusAPI(recordId, status, reviewer, notes) {
-    if (DEMO_MODE) {
-        // Update localStorage for demo
-        const existingData = JSON.parse(localStorage.getItem('demoLetters') || '[]');
-        const recordIndex = existingData.findIndex(letter => letter.id === recordId);
-        
-        if (recordIndex !== -1) {
-            existingData[recordIndex].reviewStatus = status;
-            existingData[recordIndex].reviewer = reviewer;
-            existingData[recordIndex].notes = notes;
-            existingData[recordIndex].reviewDate = new Date().toISOString();
-            localStorage.setItem('demoLetters', JSON.stringify(existingData));
-        }
-        
-        return { success: true };
-    }
-    
+/**
+ * Deletes a specific row from the 'Submissions' sheet.
+ * NOTE: This requires write permissions (OAuth 2.0 usually). Might fail with API Key.
+ * @param {number} rowIndex - The row number to delete (1-based index).
+ * @returns {Promise<object>} - The API response.
+ */
+async function deleteSheetRow(rowIndex) {
+    const batchUpdateUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate?key=${API_KEY}`;
+    console.log(`Attempting to delete row ${rowIndex} from Submissions sheet.`);
+
+    // !!! Authorization Warning !!!
+    console.warn("Delete operation might fail due to permissions. API Key might only allow read access.");
+
+    const requestBody = {
+        requests: [
+            {
+                deleteDimension: {
+                    range: {
+                        sheetId: await getSheetIdByName("Submissions"), // Need sheetId, not name
+                        dimension: "ROWS",
+                        startIndex: rowIndex - 1, // API is 0-indexed
+                        endIndex: rowIndex
+                    }
+                }
+            }
+        ]
+    };
+
     try {
-        // This would require finding the specific row and updating column J
-        // For now, we'll use a simplified approach
-        console.log('Updating review status in Google Sheets:', { recordId, status, reviewer, notes });
-                // In a real implementation, you'd need to:
-        // 1. Find the row with the matching recordId
-        // 2. Update the specific columns (J for review status, etc.)
-        // 3. Use the Google Sheets API to update the range
-        
-        return { success: true };
+        // First, get the sheetId for "Submissions"
+        const sheetId = await getSheetIdByName("Submissions");
+        if (sheetId === null) {
+            throw new Error("Could not find sheetId for 'Submissions'.");
+        }
+        requestBody.requests[0].deleteDimension.range.sheetId = sheetId;
+
+        const response = await fetch(batchUpdateUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // 'Authorization': 'Bearer YOUR_OAUTH2_TOKEN' // Typically needed
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Google Sheets API Delete Error Response:", errorData);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.error.message}`);
+        }
+
+        const data = await response.json();
+        console.log(`Successfully deleted row ${rowIndex}:`, data);
+        return data;
     } catch (error) {
-        console.error('Error updating review status:', error);
+        console.error(`Error deleting row ${rowIndex}:`, error);
         throw error;
     }
 }
 
-// Utility Functions
-function translateLetterTypeToEnglish(arabicType) {
-    const translations = {
-        'جديد': 'New',
-        'رد': 'Reply',
-        'متابعة': 'Follow Up',
-        'تعاون': 'Co-op'
-    };
-    return translations[arabicType] || arabicType;
+/**
+ * Helper function to get the numeric sheetId from its name.
+ * @param {string} sheetName - The name of the sheet.
+ * @returns {Promise<number|null>} - The numeric ID or null if not found.
+ */
+async function getSheetIdByName(sheetName) {
+    const metadataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets(properties(sheetId,title))&key=${API_KEY}`;
+    console.log(`Fetching sheet metadata to find ID for '${sheetName}'...`);
+    try {
+        const response = await fetch(metadataUrl);
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Google Sheets API Metadata Error Response:", errorData);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorData.error.message}`);
+        }
+        const metadata = await response.json();
+        const sheet = metadata.sheets.find(s => s.properties.title === sheetName);
+        if (sheet) {
+            console.log(`Found sheetId ${sheet.properties.sheetId} for sheet '${sheetName}'.`);
+            return sheet.properties.sheetId;
+        } else {
+            console.error(`Sheet with name '${sheetName}' not found.`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error fetching sheet metadata:`, error);
+        throw error;
+    }
 }
 
-function translateLetterTypeToArabic(englishType) {
-    const translations = {
-        'New': 'جديد',
-        'Reply': 'رد',
-        'Follow Up': 'متابعة',
-        'Co-op': 'تعاون'
-    };
-    return translations[englishType] || englishType;
-}
 
-function generateId() {
-    return 'LTR-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-}
-
-// Export functions for testing
-if (typeof window !== 'undefined') {
-    window.getDemoRecords = getDemoRecords;
-    window.generateDemoLetterContent = generateDemoLetterContent;
-}

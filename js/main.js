@@ -1,707 +1,598 @@
-// Global Variables
-let currentLetterData = null; // Stores data for the currently generated/archived letter
-let allLetterRecords = []; // Stores all records fetched for the records page
-let themeManager; // Handles theme toggling
+// main.js - Main application logic, event listeners, and UI updates
 
-// DOM Content Loaded
-document.addEventListener("DOMContentLoaded", function() {
-    initializeApp();
-});
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM fully loaded and parsed");
 
-// Initialize Application
-function initializeApp() {
-    themeManager = new ThemeManager(); // Initialize theme manager
-    setupNavigation(); // Setup mobile menu and link behavior
-    initializePageSpecificLogic(); // Run logic based on the current page
-}
-
-// Setup Navigation (Hamburger Menu, Links)
-function setupNavigation() {
+    // Global elements
+    const themeToggle = document.getElementById("themeToggle");
+    const themeIcon = document.getElementById("themeIcon");
+    const loadingOverlay = document.getElementById("loadingOverlay");
     const hamburger = document.querySelector(".hamburger");
     const navMenu = document.querySelector(".nav-menu");
 
+    // --- Global Functionality ---
+
+    // Theme Toggler
+    if (themeToggle && themeIcon) {
+        // Check for saved theme preference
+        const currentTheme = localStorage.getItem("theme") || "light";
+        document.body.classList.toggle("dark-mode", currentTheme === "dark");
+        themeIcon.classList.toggle("fa-sun", currentTheme === "dark");
+        themeIcon.classList.toggle("fa-moon", currentTheme === "light");
+
+        themeToggle.addEventListener("click", () => {
+            document.body.classList.toggle("dark-mode");
+            const isDarkMode = document.body.classList.contains("dark-mode");
+            themeIcon.classList.toggle("fa-sun", isDarkMode);
+            themeIcon.classList.toggle("fa-moon", !isDarkMode);
+            localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+            console.log(`Theme changed to: ${isDarkMode ? "dark" : "light"}`);
+        });
+    }
+
+    // Hamburger Menu
     if (hamburger && navMenu) {
-        hamburger.addEventListener("click", function() {
+        hamburger.addEventListener("click", () => {
             hamburger.classList.toggle("active");
             navMenu.classList.toggle("active");
+            console.log("Hamburger menu toggled");
         });
     }
 
-    const navLinks = document.querySelectorAll(".nav-link");
-    navLinks.forEach(link => {
-        link.addEventListener("click", () => {
-            hamburger?.classList.remove("active");
-            navMenu?.classList.remove("active");
-        });
-    });
-}
+    // Loading Overlay Control
+    const showLoading = (message = "جاري التحميل...") => {
+        if (loadingOverlay) {
+            const p = loadingOverlay.querySelector("p");
+            if (p) p.textContent = message;
+            loadingOverlay.style.display = "flex";
+            console.log(`Showing loading: ${message}`);
+        }
+    };
+    const hideLoading = () => {
+        if (loadingOverlay) {
+            loadingOverlay.style.display = "none";
+            console.log("Hiding loading");
+        }
+    };
 
-// Initialize Page-Specific Logic
-function initializePageSpecificLogic() {
-    const currentPage = getCurrentPage();
-    console.log(`Initializing page: ${currentPage}`);
-
-    switch(currentPage) {
-        case "create-letter":
-            initializeCreateLetterPage();
-            break;
-        case "review-letter":
-            initializeReviewLetterPage();
-            break;
-        case "letter-records":
-            initializeLetterRecordsPage();
-            break;
-        default:
-            // Initialize home page logic if any
-            console.log("Home page initialized");
-    }
-}
-
-// Get Current Page Name
-function getCurrentPage() {
+    // --- Page Specific Logic ---
+    const page = document.body.id; // Assuming body ID identifies the page (e.g., <body id="createLetterPage">)
+    // Or use window.location.pathname
     const path = window.location.pathname.split("/").pop();
-    if (path.startsWith("create-letter")) return "create-letter";
-    if (path.startsWith("review-letter")) return "review-letter";
-    if (path.startsWith("letter-records")) return "letter-records";
-    return "home"; // Default to home (index.html)
-}
+    console.log(`Current page path: ${path}`);
 
-// --- Create Letter Page Logic ---
-function initializeCreateLetterPage() {
-    const letterForm = document.getElementById("letterForm");
-    const generateBtn = document.getElementById("generateBtn");
-    const saveAndProceedBtn = document.getElementById("saveAndProceedBtn");
-    const previewSection = document.getElementById("previewSection");
+    // --- Create Letter Page Logic (create-letter.html) ---
+    if (path === "create-letter.html") {
+        console.log("Initializing Create Letter Page");
+        const letterForm = document.getElementById("letterForm");
+        const letterTypeSelect = document.getElementById("letterType");
+        const letterCategorySelect = document.getElementById("letterCategory"); // Added based on HTML
+        const letterPurposeSelect = document.getElementById("letterPurpose");
+        const toneSelect = document.getElementById("template"); // Maps to الأسلوب in requirements
+        const recipientInput = document.getElementById("recipient");
+        const subjectInput = document.getElementById("subject");
+        const contentInput = document.getElementById("content");
+        const firstCorrespondenceRadios = document.querySelectorAll("input[name=\"firstCorrespondence\"]");
+        const generateBtn = document.getElementById("generateBtn");
+        const previewSection = document.getElementById("previewSection");
+        const generatedLetterTextarea = document.getElementById("generatedLetter");
+        const saveAndProceedBtn = document.getElementById("saveAndProceedBtn");
+        // const exportBtn = document.getElementById("exportBtn"); // PDF export button
 
-    if (letterForm) {
-        letterForm.addEventListener("submit", handleGenerateLetterSubmit);
-    }
+        let generatedLetterId = null; // To store the ID from the generate API response
 
-    if (saveAndProceedBtn) {
-        saveAndProceedBtn.addEventListener("click", handleSaveAndProceedClick);
-    }
+        // Populate dropdowns
+        const populateDropdowns = async () => {
+            showLoading("جاري تحميل الخيارات...");
+            try {
+                const options = await getDropdownOptions();
 
-    // Add event listeners for template buttons if they exist
-    const templateButtons = document.querySelectorAll(".template-btn");
-    templateButtons.forEach(btn => {
-        btn.addEventListener("click", handleTemplateSelection);
-    });
+                // Populate Letter Type (Requirement: Col B, HTML has static options)
+                // Assuming we should use Sheet data if available
+                if (letterTypeSelect && options.letterTypes.length > 0) {
+                    letterTypeSelect.innerHTML = 
+                        `<option value="">اختر نوع الخطاب</option>` +
+                        options.letterTypes.map(opt => `<option value="${opt}">${opt}</option>`).join("");
+                    console.log("Populated Letter Types");
+                } else {
+                    console.warn("Letter Type select not found or no options from sheet. Using static HTML options.");
+                }
 
-    loadCreateLetterDropdowns();
-}
+                // Populate Letter Purpose (Requirement: Col C)
+                if (letterPurposeSelect && options.purposes.length > 0) {
+                    letterPurposeSelect.innerHTML = 
+                        `<option value="">اختر الغرض من الخطاب</option>` +
+                        options.purposes.map(opt => `<option value="${opt}">${opt}</option>`).join("");
+                    console.log("Populated Letter Purposes");
+                } else {
+                    console.warn("Letter Purpose select not found or no options from sheet.");
+                }
 
-async function loadCreateLetterDropdowns() {
-    try {
-        const options = await window.sheets.getDropdownOptionsAPI();
-        populateDropdown("letterType", options.letterTypes, "اختر نوع الخطاب");
-        populateDropdown("letterPurpose", options.letterPurposes, "اختر الغرض من الخطاب");
-        populateDropdown("letterStyle", options.letterStyles, "اختر الأسلوب");
-    } catch (error) {
-        console.error("Error loading dropdown options:", error);
-        showAlert("فشل تحميل خيارات النموذج. يرجى المحاولة مرة أخرى.", "error");
-        // Populate with demo data as fallback?
-        const demoOptions = window.sheets.getDemoDropdownOptions();
-        populateDropdown("letterType", demoOptions.letterTypes, "اختر نوع الخطاب");
-        populateDropdown("letterPurpose", demoOptions.letterPurposes, "اختر الغرض من الخطاب");
-        populateDropdown("letterStyle", demoOptions.letterStyles, "اختر الأسلوب");
-    }
-}
+                // Populate Tone/Template (Requirement: Col G - الأسلوب)
+                if (toneSelect && options.tones.length > 0) {
+                    toneSelect.innerHTML = 
+                        `<option value="">اختر قالب</option>` +
+                        options.tones.map(opt => `<option value="${opt}">${opt}</option>`).join("");
+                    console.log("Populated Tones/Templates");
+                } else {
+                    console.warn("Tone/Template select not found or no options from sheet.");
+                }
 
-function populateDropdown(elementId, options, defaultText) {
-    const selectElement = document.getElementById(elementId);
-    if (!selectElement) return;
+                // Populate Letter Category (Not in requirements sheet cols, using static HTML)
+                if (letterCategorySelect) {
+                     console.log("Using static options for Letter Category");
+                }
 
-    selectElement.innerHTML = `<option value="">${defaultText}</option>`; // Clear existing and add default
-    options.forEach(option => {
-        const optionElement = document.createElement("option");
-        optionElement.value = option;
-        optionElement.textContent = option;
-        selectElement.appendChild(optionElement);
-    });
-}
-
-async function handleGenerateLetterSubmit(e) {
-    e.preventDefault();
-    const generateBtn = document.getElementById("generateBtn");
-    const formData = getCreateLetterFormData();
-
-    if (!validateCreateLetterForm(formData)) {
-        showAlert("يرجى ملء جميع الحقول المطلوبة.", "warning");
-        return;
-    }
-
-    showLoadingOverlay(true, "جاري إنشاء الخطاب...");
-    generateBtn.disabled = true;
-    generateBtn.innerHTML = ".<i class=\"fas fa-spinner fa-spin\"></i> جاري الإنشاء";
-
-    try {
-        // Construct payload according to knowledge `user_1`
-        const apiPayload = {
-            category: formData.letterType, // Assuming letterType maps to category
-            sub_category: formData.letterPurpose, // Assuming letterPurpose maps to sub_category
-            title: formData.subject,
-            recipient: formData.recipient,
-            isFirst: formData.firstCorrespondence === "true",
-            prompt: formData.content,
-            tone: formData.letterStyle
+            } catch (error) {
+                console.error("Failed to populate dropdowns:", error);
+                alert("حدث خطأ أثناء تحميل خيارات النماذج. يرجى المحاولة مرة أخرى.");
+            } finally {
+                hideLoading();
+            }
         };
 
-        const response = await window.api.generateLetterAPI(apiPayload);
-        const generatedLetterText = response.generatedText;
+        populateDropdowns();
 
-        // Store generated data
-        currentLetterData = { ...formData, generatedContent: generatedLetterText };
+        // Handle Generate Letter Form Submission
+        if (letterForm && generateBtn) {
+            letterForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                console.log("Generate Letter form submitted");
+                showLoading("جاري إنشاء الخطاب...");
 
-        displayGeneratedLetter(generatedLetterText);
-        showPreviewSection();
-        showAlert("تم إنشاء الخطاب بنجاح. يمكنك الآن معاينته وتعديله.", "success");
+                try {
+                    const isFirst = document.querySelector("input[name=\"firstCorrespondence\"]:checked").value === "نعم";
+                    const payload = {
+                        category: letterCategorySelect.value, // From HTML
+                        sub_category: letterPurposeSelect.value, // Maps to الغرض
+                        title: subjectInput.value,
+                        recipient: recipientInput.value,
+                        isFirst: isFirst,
+                        prompt: contentInput.value,
+                        tone: toneSelect.value // Maps to الأسلوب/Template
+                    };
 
-    } catch (error) {
-        console.error("Error generating letter:", error);
-        showAlert(`فشل إنشاء الخطاب: ${error.message}`, "error");
-        // Hide preview section if generation failed?
-        // document.getElementById("previewSection").style.display = "none";
-    } finally {
-        showLoadingOverlay(false);
-        generateBtn.disabled = false;
-        generateBtn.innerHTML = ".<i class=\"fas fa-magic\"></i> إنشاء الخطاب";
+                    // Validate required fields
+                    if (!payload.category || !payload.sub_category || !payload.title || !payload.recipient || !payload.prompt || !payload.tone || document.querySelector("input[name=\"firstCorrespondence\"]:checked") === null) {
+                        alert("يرجى ملء جميع الحقول المطلوبة (*).");
+                        hideLoading();
+                        return;
+                    }
+
+                    const result = await generateLetter(payload);
+
+                    // Assuming result contains { generated_text: "...", letter_id: "..." }
+                    if (result && result.generated_text) {
+                        generatedLetterTextarea.value = result.generated_text;
+                        generatedLetterId = result.letter_id || null; // Store the ID
+                        previewSection.style.display = "block";
+                        generatedLetterTextarea.focus(); // Focus on the generated text
+                        console.log("Letter generated successfully. ID:", generatedLetterId);
+                        alert("تم إنشاء الخطاب بنجاح!");
+                    } else {
+                        console.error("Generate API did not return expected format.", result);
+                        alert("حدث خطأ غير متوقع أثناء إنشاء الخطاب. الاستجابة غير صحيحة.");
+                    }
+                } catch (error) {
+                    console.error("Error generating letter:", error);
+                    alert(`فشل إنشاء الخطاب: ${error.message}`);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        // Handle Save and Proceed
+        if (saveAndProceedBtn) {
+            saveAndProceedBtn.addEventListener("click", async () => {
+                console.log("Save and Proceed clicked");
+                const editedContent = generatedLetterTextarea.value;
+                const selectedTemplate = toneSelect.value; // Or another template selector if needed
+
+                if (!editedContent) {
+                    alert("لا يوجد محتوى للحفظ. يرجى إنشاء خطاب أولاً.");
+                    return;
+                }
+                if (!generatedLetterId) {
+                    alert("لم يتم العثور على الرقم المرجعي للخطاب. يرجى إعادة الإنشاء.");
+                    console.warn("Cannot archive without a letter ID from generate step.");
+                    return;
+                }
+
+                showLoading("جاري الحفظ والأرشفة...");
+
+                try {
+                    // Construct FormData based on the requirements image
+                    const formData = new FormData();
+                    // formData.append("file", ???); // How to get the PDF/DOCX? Requires server-side generation or library
+                    formData.append("letter_content", editedContent);
+                    formData.append("letter_type", letterTypeSelect.value); // Assuming 'New'/'Reply' etc.
+                    formData.append("recipient", recipientInput.value);
+                    formData.append("title", subjectInput.value);
+                    const isFirstValue = document.querySelector("input[name=\"firstCorrespondence\"]:checked").value === "نعم" ? "yes" : "no";
+                    formData.append("is_first", isFirstValue);
+                    formData.append("ID", generatedLetterId); // Use the ID from the generate step
+
+                    // Add template info if needed by archive API (not explicitly in screenshot)
+                    // formData.append("template", selectedTemplate);
+
+                    console.log("FormData prepared for archive:", Object.fromEntries(formData));
+
+                    // --- PDF Generation (Client-side - Complex) ---
+                    // Client-side PDF generation from HTML/template is complex.
+                    // The requirement mentions sending PDF based on template.
+                    // This likely needs a library (jsPDF, pdf-lib) or server-side help.
+                    // For now, we are only sending the text content as per `letter_content`.
+                    // If a file is strictly required, this needs more implementation.
+                    console.warn("PDF/File generation based on template is not implemented client-side.");
+                    // If a dummy file is needed for the API:
+                    // const dummyFile = new Blob(["dummy content"], { type: 'text/plain' });
+                    // formData.append("file", dummyFile, "letter.txt");
+
+                    const archiveResult = await archiveLetter(formData);
+
+                    if (archiveResult && archiveResult.success) { // Adjust based on actual API response
+                        console.log("Letter archived successfully:", archiveResult);
+                        alert("تم حفظ الخطاب بنجاح!");
+                        window.location.href = "index.html"; // Redirect to home
+                    } else {
+                        console.error("Archive API call failed or returned unsuccessful:", archiveResult);
+                        alert("فشل حفظ الخطاب. يرجى المحاولة مرة أخرى.");
+                    }
+                } catch (error) {
+                    console.error("Error saving/archiving letter:", error);
+                    alert(`فشل حفظ الخطاب: ${error.message}`);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
     }
-}
 
-function getCreateLetterFormData() {
-    return {
-        letterType: document.getElementById("letterType")?.value || "",
-        letterPurpose: document.getElementById("letterPurpose")?.value || "",
-        letterStyle: document.getElementById("letterStyle")?.value || "",
-        firstCorrespondence: document.querySelector("input[name=\"firstCorrespondence\"]:checked")?.value || "",
-        recipient: document.getElementById("recipient")?.value.trim() || "",
-        subject: document.getElementById("subject")?.value.trim() || "",
-        content: document.getElementById("content")?.value.trim() || ""
-    };
-}
+    // --- Letter Records Page Logic (letter-records.html) ---
+    if (path === "letter-records.html") {
+        console.log("Initializing Letter Records Page");
+        const searchInput = document.getElementById("searchInput");
+        const letterTypeFilter = document.getElementById("letterTypeFilter");
+        const reviewStatusFilter = document.getElementById("reviewStatusFilter");
+        const sendStatusFilter = document.getElementById("sendStatusFilter");
+        const recordsTableBody = document.getElementById("recordsTableBody");
+        const loadingRecords = document.getElementById("loadingRecords");
+        const noRecords = document.getElementById("noRecords");
+        const refreshBtn = document.getElementById("refreshBtn");
+        const actionModal = document.getElementById("actionModal");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalMessage = document.getElementById("modalMessage");
+        const confirmBtn = document.getElementById("confirmBtn");
+        const cancelBtn = document.getElementById("cancelBtn");
+        const closeModal = actionModal ? actionModal.querySelector(".close") : null;
 
-function validateCreateLetterForm(data) {
-    return data.letterType && data.letterPurpose && data.letterStyle &&
-           data.firstCorrespondence && data.recipient && data.subject && data.content;
-}
+        let allRecords = []; // Store all fetched records
+        let currentAction = null; // Store action details for modal confirmation
 
-function displayGeneratedLetter(text) {
-    const textarea = document.getElementById("generatedLetter");
-    if (textarea) {
-        textarea.value = text;
-    }
-}
-
-function showPreviewSection() {
-    const previewSection = document.getElementById("previewSection");
-    if (previewSection) {
-        previewSection.style.display = "block";
-        previewSection.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-}
-
-function handleTemplateSelection(event) {
-    const selectedTemplate = event.target.dataset.template;
-    const hiddenInput = document.getElementById("selectedTemplate");
-    const previewArea = document.getElementById("templatePreviewArea");
-
-    if (hiddenInput) {
-        hiddenInput.value = selectedTemplate;
-    }
-
-    // Update button styles to show selection
-    document.querySelectorAll(".template-btn").forEach(btn => btn.classList.remove("active"));
-    event.target.classList.add("active");
-
-    // Show preview area (content depends on how templates are handled)
-    if (previewArea) {
-        previewArea.style.display = "block";
-        previewArea.innerHTML = `<p>تم اختيار ${event.target.textContent}. سيتم تطبيق هذا القالب عند الحفظ.</p>`;
-        // In a more complex scenario, you might fetch/render a preview based on `selectedTemplate`
-        // Example: previewArea.innerHTML = ".<iframe src=\"/path/to/template/preview?template=${selectedTemplate}\" width=\"100%\" height=\"300px\"></iframe>";
-    }
-
-    console.log(`Template selected: ${selectedTemplate}`);
-}
-
-async function handleSaveAndProceedClick() {
-    const saveBtn = document.getElementById("saveAndProceedBtn");
-    const editedLetterContent = document.getElementById("generatedLetter")?.value.trim();
-    const selectedTemplate = document.getElementById("selectedTemplate")?.value;
-
-    if (!editedLetterContent) {
-        showAlert("لا يوجد محتوى في معاينة الخطاب للحفظ.", "warning");
-        return;
-    }
-    if (!selectedTemplate) {
-        showAlert("يرجى اختيار قالب قبل المتابعة.", "warning");
-        return;
-    }
-
-    showLoadingOverlay(true, "جاري حفظ الخطاب...");
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = ".<i class=\"fas fa-spinner fa-spin\"></i> جاري الحفظ";
-
-    try {
-        // 1. Call Archive API
-        const archivePayload = {
-            letter_content: editedLetterContent,
-            template_choice: selectedTemplate // Send the chosen template name
-            // Include other necessary data if the API requires it (e.g., original form data)
-            // ...currentLetterData // Spread original form data if needed by API
+        // Status mapping and styling
+        const reviewStatusMap = {
+            "جاهز للإرسال": { text: "جاهز للإرسال", color: "status-green" },
+            "في الانتظار": { text: "في الانتظار", color: "status-orange" },
+            "يحتاج إلى تحسينات": { text: "يحتاج إلى تحسينات", color: "status-red" },
+            // Add other statuses from sheet if needed
         };
-        const archiveResponse = await window.api.archiveLetterAPI(archivePayload);
-        console.log("Archive API response:", archiveResponse);
-        // Assuming archive API returns success and potentially a PDF URL or confirms saving
-        const pdfUrl = archiveResponse.data?.pdf_url || ""; // Adjust based on actual API response
-
-        // 2. Save to Google Sheets
-        const sheetData = {
-            ...currentLetterData, // Original form data + generated content
-            generatedContent: editedLetterContent, // Use the potentially edited content
-            selectedTemplate: selectedTemplate,
-            pdfUrl: pdfUrl // Include PDF URL from archive response if available
-            // letterId will be generated by saveToGoogleSheets if not provided
+        const sendStatusMap = {
+            "تم الإرسال": { text: "تم الإرسال", color: "status-green" },
+            "في الانتظار": { text: "في الانتظار", color: "status-orange" },
+            // Add other statuses from sheet if needed
         };
-        const saveResult = await window.sheets.saveToGoogleSheets(sheetData);
-        console.log("Save to Sheets result:", saveResult);
+        const letterTypeArabicMap = {
+            "New": "جديد",
+            "Reply": "رد",
+            "Follow Up": "متابعة",
+            "Co-op": "تعاون"
+        };
 
-        showAlert("تم حفظ الخطاب بنجاح!", "success");
+        // Render table rows
+        const renderTable = (records) => {
+            recordsTableBody.innerHTML = ""; // Clear existing rows
+            if (records.length === 0) {
+                noRecords.style.display = "block";
+                loadingRecords.style.display = "none";
+                return;
+            }
+            noRecords.style.display = "none";
 
-        // 3. Redirect to Home Page
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 1500);
+            records.forEach(record => {
+                const row = recordsTableBody.insertRow();
+                row.setAttribute("data-id", record.id);
+                row.setAttribute("data-rowindex", record.rowIndex);
 
-    } catch (error) {
-        console.error("Error saving and proceeding:", error);
-        showAlert(`فشل حفظ الخطاب: ${error.message}`, "error");
-    } finally {
-        showLoadingOverlay(false);
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = ".<i class=\"fas fa-save\"></i> حفظ ومتابعة";
+                const reviewStatusInfo = reviewStatusMap[record.reviewStatus] || { text: record.reviewStatus, color: "" };
+                const sendStatusInfo = sendStatusMap[record.sendStatus] || { text: record.sendStatus, color: "" };
+                const letterTypeArabic = letterTypeArabicMap[record.type] || record.type;
+
+                row.innerHTML = `
+                    <td>${record.id}</td>
+                    <td>${record.date ? new Date(record.date).toLocaleDateString("ar-SA") : "-"}</td>
+                    <td>${letterTypeArabic}</td>
+                    <td>${record.subject}</td>
+                    <td><span class="status-badge ${sendStatusInfo.color}">${sendStatusInfo.text}</span></td>
+                    <td>${record.recipient}</td>
+                    <td><span class="status-badge ${reviewStatusInfo.color}">${reviewStatusInfo.text}</span></td>
+                    <td class="actions">
+                        <button class="action-btn review-btn" title="مراجعة"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn print-btn" title="طباعة"><i class="fas fa-print"></i></button>
+                        <button class="action-btn download-btn" title="تحميل PDF"><i class="fas fa-download"></i></button>
+                        <button class="action-btn delete-btn" title="حذف"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                `;
+            });
+            loadingRecords.style.display = "none";
+            console.log(`Rendered ${records.length} records`);
+        };
+
+        // Fetch and display records
+        const loadRecords = async () => {
+            loadingRecords.style.display = "block";
+            noRecords.style.display = "none";
+            recordsTableBody.innerHTML = "";
+            try {
+                allRecords = await getLetterRecords();
+                filterAndRenderRecords(); // Initial render
+            } catch (error) {
+                console.error("Failed to load records:", error);
+                alert("حدث خطأ أثناء تحميل سجل الخطابات.");
+                loadingRecords.style.display = "none";
+                noRecords.style.display = "block";
+                noRecords.querySelector("p").textContent = "فشل تحميل السجلات.";
+            }
+        };
+
+        // Filter and Search Logic
+        const filterAndRenderRecords = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const typeFilter = letterTypeFilter.value;
+            const reviewFilter = reviewStatusFilter.value;
+            const sendFilter = sendStatusFilter.value;
+
+            const filteredRecords = allRecords.filter(record => {
+                const typeArabic = letterTypeArabicMap[record.type] || record.type;
+                const matchesSearch = !searchTerm || record.recipient.toLowerCase().includes(searchTerm) || record.id.toLowerCase().includes(searchTerm);
+                const matchesType = !typeFilter || typeArabic === typeFilter;
+                const matchesReview = !reviewFilter || record.reviewStatus === reviewFilter;
+                const matchesSend = !sendFilter || record.sendStatus === sendFilter;
+                return matchesSearch && matchesType && matchesReview && matchesSend;
+            });
+
+            console.log(`Filtering: Term=\"${searchTerm}\", Type=\"${typeFilter}\", Review=\"${reviewFilter}\", Send=\"${sendFilter}\". Found ${filteredRecords.length} records.`);
+            renderTable(filteredRecords);
+        };
+
+        // Event Listeners for Filters and Search
+        searchInput.addEventListener("input", filterAndRenderRecords);
+        letterTypeFilter.addEventListener("change", filterAndRenderRecords);
+        reviewStatusFilter.addEventListener("change", filterAndRenderRecords);
+        sendStatusFilter.addEventListener("change", filterAndRenderRecords);
+        refreshBtn.addEventListener("click", loadRecords);
+
+        // Modal Handling
+        const openModal = (title, message, actionDetails) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            currentAction = actionDetails;
+            actionModal.style.display = "block";
+        };
+        const closeModalAction = () => {
+            actionModal.style.display = "none";
+            currentAction = null;
+        };
+        if (closeModal) closeModal.addEventListener("click", closeModalAction);
+        if (cancelBtn) cancelBtn.addEventListener("click", closeModalAction);
+        window.addEventListener("click", (event) => {
+            if (event.target == actionModal) {
+                closeModalAction();
+            }
+        });
+
+        // Confirm Action (Delete)
+        if (confirmBtn) {
+            confirmBtn.addEventListener("click", async () => {
+                if (!currentAction || currentAction.type !== "delete") return;
+
+                const { recordId, rowIndex } = currentAction;
+                console.log(`Confirming delete for row index: ${rowIndex}`);
+                showLoading("جاري الحذف...");
+                closeModalAction();
+
+                try {
+                    // !!! WARNING: This uses the sheets.js function which might fail due to permissions
+                    await deleteSheetRow(rowIndex);
+                    alert("تم حذف السجل بنجاح (إذا كانت الأذونات تسمح).");
+                    loadRecords(); // Refresh the list
+                } catch (error) {
+                    console.error("Error deleting record:", error);
+                    alert(`فشل حذف السجل: ${error.message}. قد تحتاج إلى صلاحيات تعديل للجدول.`);
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        // Handle Actions (Event Delegation)
+        recordsTableBody.addEventListener("click", (e) => {
+            const targetButton = e.target.closest(".action-btn");
+            if (!targetButton) return;
+
+            const row = targetButton.closest("tr");
+            const recordId = row.getAttribute("data-id");
+            const rowIndex = parseInt(row.getAttribute("data-rowindex"), 10);
+            console.log(`Action clicked on row ID: ${recordId}, Index: ${rowIndex}`);
+
+            if (targetButton.classList.contains("review-btn")) {
+                console.log("Review action triggered");
+                // Store ID and navigate
+                localStorage.setItem("reviewLetterId", recordId);
+                localStorage.setItem("reviewLetterRowIndex", rowIndex);
+                window.location.href = "review-letter.html";
+            }
+            else if (targetButton.classList.contains("print-btn")) {
+                console.log("Print action triggered");
+                // Option 1: Print a dedicated view (if available)
+                // window.open(`print-letter.html?id=${recordId}`, "_blank");
+                // Option 2: Navigate to review page and trigger print (simple)
+                alert("للطباعة، سيتم فتح صفحة المراجعة. استخدم وظيفة الطباعة في المتصفح (Ctrl+P).");
+                localStorage.setItem("reviewLetterId", recordId);
+                localStorage.setItem("reviewLetterRowIndex", rowIndex);
+                // Add a flag to trigger print on load in review page?
+                localStorage.setItem("triggerPrint", "true");
+                window.location.href = "review-letter.html";
+            }
+            else if (targetButton.classList.contains("download-btn")) {
+                console.log("Download action triggered");
+                // Downloading requires the actual file. The archive API might store it,
+                // or we need to fetch content and generate PDF client-side (complex).
+                // Placeholder: Alert user
+                alert("وظيفة التحميل المباشر كـ PDF غير متوفرة حالياً. يمكنك الطباعة إلى PDF من صفحة المراجعة.");
+                // TODO: Implement actual download if backend provides file URL or content
+            }
+            else if (targetButton.classList.contains("delete-btn")) {
+                console.log("Delete action triggered");
+                openModal(
+                    "تأكيد الحذف",
+                    `هل أنت متأكد من حذف الخطاب ذو الرقم المرجعي ${recordId}؟ لا يمكن التراجع عن هذا الإجراء.`,
+                    { type: "delete", recordId, rowIndex }
+                );
+            }
+        });
+
+        // Initial load
+        loadRecords();
     }
-}
 
-// --- Review Letter Page Logic ---
-function initializeReviewLetterPage() {
-    const letterId = new URLSearchParams(window.location.search).get("id");
-    const reviewCompletedCheckbox = document.getElementById("reviewCompleted");
-    const needsImprovementBtn = document.getElementById("needsImprovementBtn");
-    const readyToSendBtn = document.getElementById("readyToSendBtn");
-    const rejectBtn = document.getElementById("rejectBtn");
+    // --- Review Letter Page Logic (review-letter.html) ---
+    if (path === "review-letter.html") {
+        console.log("Initializing Review Letter Page");
+        const letterIdDisplay = document.getElementById("letterIdDisplay");
+        const reviewerNameInput = document.getElementById("reviewerName");
+        const letterToReviewTextarea = document.getElementById("letterToReview");
+        const reviewNotesTextarea = document.getElementById("reviewNotes");
+        const reviewCompletedCheckbox = document.getElementById("reviewCompleted");
+        const approveBtn = document.getElementById("approveBtn"); // Changed from proceedBtn based on HTML
+        const needsImprovementBtn = document.getElementById("needsImprovementBtn");
+        // const rejectBtn = document.getElementById("rejectBtn"); // Not in HTML provided
+        const reviewForm = document.getElementById("reviewForm"); // Assuming form wraps controls
 
-    if (!letterId) {
-        showAlert("لم يتم تحديد خطاب للمراجعة. جارٍ إعادة التوجيه...", "error");
-        setTimeout(() => { window.location.href = "letter-records.html"; }, 2000);
-        return;
-    }
+        const letterId = localStorage.getItem("reviewLetterId");
+        const rowIndex = localStorage.getItem("reviewLetterRowIndex");
+        const triggerPrint = localStorage.getItem("triggerPrint") === "true";
 
-    // Store letter ID globally for this page
-    document.body.dataset.letterId = letterId;
+        // Clear print trigger flag
+        localStorage.removeItem("triggerPrint");
 
-    // Load letter content
-    loadLetterForReview(letterId);
-
-    // Enable/disable buttons based on checkbox
-    if (reviewCompletedCheckbox) {
-        reviewCompletedCheckbox.addEventListener("change", () => {
+        // Enable/disable action buttons based on checkbox
+        const toggleActionButtons = () => {
             const isChecked = reviewCompletedCheckbox.checked;
+            approveBtn.disabled = !isChecked;
             needsImprovementBtn.disabled = !isChecked;
-            readyToSendBtn.disabled = !isChecked;
-            rejectBtn.disabled = !isChecked;
-        });
-        // Initial state
-        needsImprovementBtn.disabled = !reviewCompletedCheckbox.checked;
-        readyToSendBtn.disabled = !reviewCompletedCheckbox.checked;
-        rejectBtn.disabled = !reviewCompletedCheckbox.checked;
-    }
-
-    // Add event listeners to buttons
-    needsImprovementBtn?.addEventListener("click", () => handleReviewAction("يحتاج إلى تحسينات"));
-    readyToSendBtn?.addEventListener("click", () => handleReviewAction("جاهز للإرسال"));
-    rejectBtn?.addEventListener("click", () => handleReviewAction("مرفوض"));
-}
-
-async function loadLetterForReview(letterId) {
-    showLoadingOverlay(true, "جاري تحميل الخطاب...");
-    try {
-        // Fetch all records (or implement getById if available)
-        const records = await window.sheets.getLetterRecordsAPI();
-        const letterRecord = records.find(r => r.id === letterId);
-
-        if (letterRecord) {
-            document.getElementById("letterToReview").value = letterRecord.content || "";
-            // Pre-fill reviewer name/notes if they exist?
-            // document.getElementById("reviewerName").value = letterRecord.reviewer || "";
-            // document.getElementById("reviewNotes").value = letterRecord.notes || "";
-        } else {
-            showAlert("لم يتم العثور على الخطاب المحدد.", "error");
-            document.getElementById("letterToReview").value = "خطأ: لم يتم العثور على الخطاب.";
-            // Disable form elements?
-        }
-    } catch (error) {
-        console.error("Error loading letter for review:", error);
-        showAlert("فشل تحميل الخطاب للمراجعة.", "error");
-        document.getElementById("letterToReview").value = "خطأ في تحميل المحتوى.";
-    } finally {
-        showLoadingOverlay(false);
-    }
-}
-
-async function handleReviewAction(status) {
-    const letterId = document.body.dataset.letterId;
-    const reviewerName = document.getElementById("reviewerName")?.value.trim();
-    const notes = document.getElementById("reviewNotes")?.value.trim();
-    const updatedContent = document.getElementById("letterToReview")?.value.trim(); // Get potentially edited content
-
-    if (!reviewerName) {
-        showAlert("يرجى إدخال اسم المراجع.", "warning");
-        return;
-    }
-    if (status === "يحتاج إلى تحسينات" && !notes) {
-        showAlert("يرجى إضافة ملاحظات عند اختيار \"يحتاج إلى تحسينات\".", "warning");
-        return;
-    }
-    if (status === "مرفوض" && !notes) {
-        showAlert("يرجى إضافة سبب الرفض في الملاحظات.", "warning");
-        // return; // Allow rejection without notes if needed
-    }
-
-    showLoadingOverlay(true, "جاري تحديث الحالة...");
-    const actionButtons = ["needsImprovementBtn", "readyToSendBtn", "rejectBtn"];
-    actionButtons.forEach(id => { document.getElementById(id).disabled = true; });
-
-    try {
-        await window.sheets.updateReviewStatusAPI(letterId, status, reviewerName, notes, updatedContent);
-
-        if (status === "مرفوض") {
-            showAlert("تم تحديث حالة الخطاب إلى \"مرفوض\". سيتم نقله إلى سلة المهملات (إذا تم تنفيذها).", "success");
-            // Add logic here for moving to trash (e.g., calling another API or sheet function)
-            // This might involve setting a flag, moving the row, etc.
-            console.log(`TODO: Implement move to trash for letter ${letterId}`);
-        } else {
-            showAlert(`تم تحديث حالة الخطاب إلى \"${status}\" بنجاح.`, "success");
-        }
-
-        // Redirect to home page
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 2000);
-
-    } catch (error) {
-        console.error("Error updating review status:", error);
-        showAlert(`فشل تحديث حالة المراجعة: ${error.message}`, "error");
-        actionButtons.forEach(id => { document.getElementById(id).disabled = false; }); // Re-enable buttons on error
-        showLoadingOverlay(false);
-    }
-    // No finally for loading/buttons here, as redirect happens on success
-}
-
-// --- Letter Records Page Logic ---
-function initializeLetterRecordsPage() {
-    // Setup Filters
-    document.getElementById("searchInput")?.addEventListener("input", debounce(applyFilters, 300));
-    document.getElementById("letterTypeFilter")?.addEventListener("change", applyFilters);
-    document.getElementById("reviewStatusFilter")?.addEventListener("change", applyFilters);
-
-    // Load initial data
-    loadAndDisplayRecords();
-
-    // Populate filter dropdowns (can be hardcoded or fetched)
-    populateFilterDropdowns();
-}
-
-async function loadAndDisplayRecords() {
-    const tableBody = document.getElementById("recordsTableBody");
-    const loadingIndicator = document.getElementById("loadingRecords");
-    const noRecordsMessage = document.getElementById("noRecords");
-
-    if (loadingIndicator) loadingIndicator.style.display = "block";
-    if (noRecordsMessage) noRecordsMessage.style.display = "none";
-    if (tableBody) tableBody.innerHTML = ""; // Clear previous records
-
-    try {
-        allLetterRecords = await window.sheets.getLetterRecordsAPI(); // Fetch and store globally
-        applyFilters(); // Display records based on current filters (initially none)
-    } catch (error) {
-        console.error("Error loading letter records:", error);
-        showAlert("فشل تحميل سجل الخطابات.", "error");
-        if (noRecordsMessage) noRecordsMessage.style.display = "block";
-    } finally {
-        if (loadingIndicator) loadingIndicator.style.display = "none";
-    }
-}
-
-function populateFilterDropdowns() {
-    // Populate "نوع الخطاب" Filter (using translations)
-    const letterTypeFilter = document.getElementById("letterTypeFilter");
-    if (letterTypeFilter) {
-        const types = { "New": "جديد", "Reply": "رد", "Follow Up": "متابعة", "Co-op": "تعاون" };
-        letterTypeFilter.innerHTML = ".<option value=\"\">الكل</option>";
-        Object.entries(types).forEach(([_, arabic]) => {
-            letterTypeFilter.innerHTML += `<option value="${arabic}">${arabic}</option>`;
-        });
-    }
-
-    // Populate "المراجعة" Filter (hardcoded based on requirements)
-    const reviewStatusFilter = document.getElementById("reviewStatusFilter");
-    if (reviewStatusFilter) {
-        const statuses = ["في الانتظار", "جاهز للإرسال", "يحتاج إلى تحسينات", "مرفوض"]; // Add more if needed
-        reviewStatusFilter.innerHTML = ".<option value=\"\">الكل</option>";
-        statuses.forEach(status => {
-            reviewStatusFilter.innerHTML += `<option value="${status}">${status}</option>`;
-        });
-    }
-}
-
-function applyFilters() {
-    const searchInput = document.getElementById("searchInput")?.value.toLowerCase() || "";
-    const letterTypeFilter = document.getElementById("letterTypeFilter")?.value || "";
-    const reviewStatusFilter = document.getElementById("reviewStatusFilter")?.value || "";
-
-    const filteredRecords = allLetterRecords.filter(record => {
-        const searchMatch = !searchInput ||
-                            (record.recipient && record.recipient.toLowerCase().includes(searchInput)) ||
-                            (record.id && record.id.toLowerCase().includes(searchInput));
-        const typeMatch = !letterTypeFilter || record.type === letterTypeFilter;
-        const reviewStatusMatch = !reviewStatusFilter || record.reviewStatus === reviewStatusFilter;
-
-        return searchMatch && typeMatch && reviewStatusMatch;
-    });
-
-    displayRecordsInTable(filteredRecords);
-}
-
-function displayRecordsInTable(records) {
-    const tableBody = document.getElementById("recordsTableBody");
-    const noRecordsMessage = document.getElementById("noRecords");
-
-    if (!tableBody) return;
-    tableBody.innerHTML = ""; // Clear existing rows
-
-    if (records.length === 0) {
-        if (noRecordsMessage) noRecordsMessage.style.display = "block";
-        return;
-    }
-
-    if (noRecordsMessage) noRecordsMessage.style.display = "none";
-
-    records.forEach(record => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${record.id || "-"}</td>
-            <td>${record.date ? new Date(record.date).toLocaleDateString("ar-SA") : "-"}</td>
-            <td>${record.type || "-"}</td>
-            <td>${createStatusBadge(record.reviewStatus, getReviewStatusColor)}</td>
-            <td>${createStatusBadge(record.sendStatus, getSendStatusColor)}</td>
-            <td>${record.recipient || "-"}</td>
-            <td>${record.subject || "-"}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="action-btn delete" onclick="handleDeleteRecord(\'${record.id}\')" title="حذف">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                    <button class="action-btn print" onclick="handlePrintRecord(\'${record.id}\')" title="طباعة">
-                        <i class="fas fa-print"></i>
-                    </button>
-                    <button class="action-btn download" onclick="handleDownloadRecord(\'${record.id}\', \'${record.pdfUrl || ''}\')" title="تحميل PDF" ${!record.pdfUrl ? 'disabled' : ''}>
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="action-btn review" onclick="handleReviewRecord(\'${record.id}\')" title="مراجعة">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-        tableBody.appendChild(row);
-    });
-}
-
-function createStatusBadge(status, colorFunc) {
-    if (!status) return "-";
-    const color = colorFunc(status);
-    return `<span class="status-badge" style="background-color: ${color};">${status}</span>`;
-}
-
-function getReviewStatusColor(status) {
-    switch (status) {
-        case "جاهز للإرسال": return "var(--color-success)"; // Green
-        case "في الانتظار": return "var(--color-warning)"; // Orange
-        case "يحتاج إلى تحسينات": return "var(--color-danger)"; // Red
-        case "مرفوض": return "var(--color-danger)"; // Red
-        default: return "var(--color-secondary)"; // Grey
-    }
-}
-
-function getSendStatusColor(status) {
-    switch (status) {
-        case "تم الإرسال": return "var(--color-success)"; // Green
-        case "في الانتظار": return "var(--color-warning)"; // Orange
-        // Add other send statuses if needed
-        default: return "var(--color-secondary)"; // Grey
-    }
-}
-
-// --- Record Actions ---
-async function handleDeleteRecord(recordId) {
-    if (!confirm(`هل أنت متأكد من حذف الخطاب رقم ${recordId}؟ لا يمكن التراجع عن هذا الإجراء.`)) {
-        return;
-    }
-
-    showLoadingOverlay(true, "جاري الحذف...");
-    try {
-        await window.sheets.deleteRecordAPI(recordId);
-        showAlert("تم حذف الخطاب بنجاح.", "success");
-        // Remove the record from the global list and re-render
-        allLetterRecords = allLetterRecords.filter(r => r.id !== recordId);
-        applyFilters(); // Re-apply filters to update the table
-    } catch (error) {
-        console.error("Error deleting record:", error);
-        showAlert(`فشل حذف الخطاب: ${error.message}`, "error");
-    } finally {
-        showLoadingOverlay(false);
-    }
-}
-
-function handlePrintRecord(recordId) {
-    // Find the record content
-    const record = allLetterRecords.find(r => r.id === recordId);
-    if (!record || !record.content) {
-        showAlert("لا يمكن طباعة الخطاب: المحتوى غير موجود.", "error");
-        return;
-    }
-
-    // Create a hidden iframe and print its content
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "absolute";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    // Basic HTML structure for printing - might need CSS for proper formatting
-    doc.write(`
-        <html>
-        <head>
-            <title>طباعة خطاب ${recordId}</title>
-            <style>
-                body { font-family: 'Cairo', sans-serif; direction: rtl; }
-                pre { white-space: pre-wrap; word-wrap: break-word; }
-            </style>
-        </head>
-        <body>
-            <pre>${record.content}</pre>
-        </body>
-        </html>
-    `);
-    doc.close();
-
-    // Wait for content to load before printing
-    iframe.onload = function() {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        // Remove the iframe after printing (optional delay)
-        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-    };
-}
-
-function handleDownloadRecord(recordId, pdfUrl) {
-    if (pdfUrl) {
-        // Option 1: Direct link (if URL is publicly accessible)
-        // window.open(pdfUrl, '_blank');
-
-        // Option 2: Force download with a specific name (requires server support or data URI)
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `letter_${recordId}.pdf`; // Suggest a filename
-        link.target = '_blank'; // Open in new tab might be better for some browsers
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showAlert("بدء تحميل ملف PDF...", "info");
-    } else {
-        showAlert("لا يوجد ملف PDF متاح للتحميل لهذا الخطاب.", "warning");
-        // Optionally, trigger PDF generation on demand if an API exists
-    }
-}
-
-function handleReviewRecord(recordId) {
-    window.location.href = `review-letter.html?id=${recordId}`;
-}
-
-// --- Utility Functions ---
-
-// Debounce function
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
+            // rejectBtn.disabled = !isChecked; // If exists
+            console.log(`Review checkbox checked: ${isChecked}, buttons enabled: ${isChecked}`);
         };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
 
-// Show/Hide Loading Overlay
-function showLoadingOverlay(show, message = "جاري التحميل...") {
-    const overlay = document.getElementById("loadingOverlay");
-    if (overlay) {
-        overlay.querySelector("p").textContent = message;
-        overlay.style.display = show ? "flex" : "none";
-    }
-}
+        // Load letter content (needs an endpoint or fetch from sheet)
+        const loadLetterForReview = async () => {
+            if (!letterId) {
+                alert("لم يتم تحديد خطاب للمراجعة. يرجى العودة لسجل الخطابات واختيار خطاب.");
+                window.location.href = "letter-records.html";
+                return;
+            }
 
-// Show Alert Message
-function showAlert(message, type = "info") {
-    // Use a more sophisticated alert/notification library in production
-    console.log(`ALERT (${type}): ${message}`);
-    // Simple alert for now:
-    alert(`[${type.toUpperCase()}] ${message}`);
-}
+            letterIdDisplay.textContent = `الرقم المرجعي: ${letterId}`;
+            showLoading("جاري تحميل بيانات الخطاب...");
 
-// Theme Manager Class
-class ThemeManager {
-    constructor() {
-        this.themeToggle = document.getElementById('themeToggle');
-        this.themeIcon = document.getElementById('themeIcon');
-        this.currentTheme = localStorage.getItem('theme') || 'light';
-        this.initTheme();
-        this.addEventListeners();
-    }
+            try {
+                // How to get letter content? 
+                // Option A: Fetch ALL records again and find by ID (inefficient)
+                // Option B: Assume content is stored in the sheet (needs column)
+                // Option C: Need a backend endpoint /get-letter-content?id=...
+                // Option D: Pass content via localStorage (bad for large content)
 
-    initTheme() {
-        document.body.classList.toggle('dark-mode', this.currentTheme === 'dark');
-        this.updateIcon();
-    }
+                // Using Option A for now, assuming getLetterRecords fetches content if available
+                // Modify getLetterRecords if content is in a specific column
+                console.warn("Fetching letter content for review is not fully implemented. Needs content source.");
+                // Placeholder:
+                letterToReviewTextarea.value = `محتوى الخطاب للرقم المرجعي ${letterId} يجب أن يُعرض هنا... \n\n(تحتاج هذه الوظيفة إلى مصدر لمحتوى الخطاب، إما من جدول البيانات أو من واجهة برمجة تطبيقات خلفية)`;
 
-    toggleTheme() {
-        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-        localStorage.setItem('theme', this.currentTheme);
-        document.body.classList.toggle('dark-mode');
-        this.updateIcon();
-    }
+                // Trigger print if requested
+                if (triggerPrint) {
+                    console.log("Triggering print dialog...");
+                    // Delay slightly to allow content to render
+                    setTimeout(() => window.print(), 500);
+                }
 
-    updateIcon() {
-        if (this.themeIcon) {
-            this.themeIcon.className = this.currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            } catch (error) {
+                console.error("Error loading letter for review:", error);
+                alert("فشل تحميل الخطاب للمراجعة.");
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // Handle Review Submission
+        const handleReviewAction = async (status) => {
+            if (!reviewerNameInput.value) {
+                alert("يرجى إدخال اسم المراجع.");
+                reviewerNameInput.focus();
+                return;
+            }
+            if (!rowIndex) {
+                alert("خطأ: لم يتم العثور على معرف الصف لتحديث الحالة.");
+                return;
+            }
+
+            const notes = reviewNotesTextarea.value;
+            console.log(`Submitting review: Status=\"${status}\", Reviewer=\"${reviewerNameInput.value}\", Notes=\"${notes}\", RowIndex=${rowIndex}`);
+            showLoading("جاري تحديث حالة المراجعة...");
+
+            try {
+                // !!! WARNING: This uses the sheets.js function which might fail due to permissions
+                await updateReviewStatus(parseInt(rowIndex, 10), status);
+                alert("تم تحديث حالة المراجعة بنجاح (إذا كانت الأذونات تسمح).");
+                // Clear stored data and redirect
+                localStorage.removeItem("reviewLetterId");
+                localStorage.removeItem("reviewLetterRowIndex");
+                window.location.href = "index.html"; // Redirect to home
+
+            } catch (error) {
+                console.error("Error updating review status:", error);
+                alert(`فشل تحديث حالة المراجعة: ${error.message}. قد تحتاج إلى صلاحيات تعديل للجدول.`);
+            } finally {
+                hideLoading();
+            }
+        };
+
+        // Event Listeners
+        if (reviewCompletedCheckbox) {
+            reviewCompletedCheckbox.addEventListener("change", toggleActionButtons);
         }
-    }
-
-    addEventListeners() {
-        if (this.themeToggle) {
-            this.themeToggle.addEventListener('click', () => this.toggleTheme());
+        if (approveBtn) {
+            // Requirement: Button text is "جاهز للإرسال" but HTML is "تمت المراجعة"
+            // Requirement: Status should be "جاهز للإرسال"
+            approveBtn.addEventListener("click", () => handleReviewAction("جاهز للإرسال"));
         }
-    }
-}
+        if (needsImprovementBtn) {
+            needsImprovementBtn.addEventListener("click", () => handleReviewAction("يحتاج إلى تحسينات"));
+        }
+        // if (rejectBtn) {
+        //     rejectBtn.addEventListener("click", () => handleReviewAction("مرفوض"));
+        // }
 
-// Make action handlers globally accessible (since they are called via onclick)
-window.handleDeleteRecord = handleDeleteRecord;
-window.handlePrintRecord = handlePrintRecord;
-window.handleDownloadRecord = handleDownloadRecord;
-window.handleReviewRecord = handleReviewRecord;
+        // Initial setup
+        toggleActionButtons(); // Set initial state
+        loadLetterForReview();
+    }
+
+    // --- Index Page Logic (index.html) ---
+    if (path === "index.html" || path === "") {
+        console.log("Initializing Index Page");
+        // Add any specific logic for the index page if needed
+    }
+
+}); // End DOMContentLoaded
 

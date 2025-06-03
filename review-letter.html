@@ -23,15 +23,15 @@
                     <li><a href="review-letter.html" class="nav-link active">مراجعة خطاب</a></li>
                 </ul>
                 <div class="nav-controls">
-                    <button class="theme-toggle" id="themeToggle" title="تغيير المظهر">
-                        <i class="fas fa-moon" id="themeIcon"></i>
-                    </button>
-                    <div class="hamburger">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
+        <button class="theme-toggle" id="themeToggle" title="تغيير المظهر">
+            <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+            </div>
             </div>
         </nav>
     </header>
@@ -40,67 +40,58 @@
         <div class="container">
             <div class="page-header">
                 <h2><i class="fas fa-search"></i> مراجعة خطاب</h2>
-                <p id="letterIdDisplay" class="letter-id-display"><!-- Letter ID will be displayed here by JS --></p>
+                <p id="letterIdDisplay" class="letter-id-display"></p>
             </div>
 
             <div class="review-container">
-                <!-- Form removed, actions are handled by buttons -->
-                <div class="review-form">
+                <form id="reviewForm" class="review-form">
                     <div class="form-group">
                         <label for="reviewerName">اسم المراجع *</label>
-                        <input type="text" id="reviewerName" required placeholder="أدخل اسم المراجع">
+                        <input type="text" id="reviewerName" required placeholder="اسم المراجع">
                     </div>
 
                     <div class="form-group">
-                        <label for="letterToReview">الخطاب للمراجعة (قابل للتعديل)</label>
-                        <textarea id="letterToReview" rows="20" placeholder="جاري تحميل الخطاب..."></textarea>
+                        <label for="letterToReview">الخطاب للمراجعة</label>
+                        <textarea id="letterToReview" rows="20" placeholder="سيتم عرض الخطاب هنا للمراجعة والتعديل..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label for="reviewNotes">الملاحظات</label>
-                        <textarea id="reviewNotes" rows="5" placeholder="أضف ملاحظاتك هنا (مطلوبة في حالة التحسينات أو الرفض)..."></textarea>
+                        <textarea id="reviewNotes" rows="5" placeholder="أضف ملاحظاتك هنا..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="reviewCompleted">
                             <span class="checkbox-custom"></span>
-                            تمت المراجعة (يجب تحديدها لتفعيل الأزرار أدناه)
+                            تمت المراجعة
                         </label>
                     </div>
 
-                    <div class="form-actions review-actions">
-                        <button type="button" class="btn btn-warning" id="needsImprovementBtn" disabled>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-success" id="approveBtn">
+                            <i class="fas fa-check"></i>
+                            تمت المراجعة
+                        </button>
+                        <button type="button" class="btn btn-warning" id="needsImprovementBtn">
                             <i class="fas fa-exclamation-triangle"></i>
                             يحتاج إلى تحسينات
                         </button>
-                        <button type="button" class="btn btn-success" id="readyToSendBtn" disabled>
-                            <i class="fas fa-check-circle"></i>
-                            جاهز للإرسال
-                        </button>
-                        <button type="button" class="btn btn-danger" id="rejectBtn" disabled>
-                            <i class="fas fa-times-circle"></i>
-                            مرفوض
+                        <button type="submit" class="btn btn-primary" id="proceedBtn" disabled>
+                            <i class="fas fa-arrow-left"></i>
+                            متابعة
                         </button>
                         <a href="letter-records.html" class="btn btn-secondary">
                             <i class="fas fa-arrow-right"></i>
                             العودة للسجلات
                         </a>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     </main>
 
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>جاري التحميل...</p>
-        </div>
-    </div>
-
-    <script src="js/sheets.js"></script>
-    <script src="js/api.js"></script> <!-- Include if needed -->
     <script src="js/main.js"></script>
+    <script src="js/sheets.js"></script>
 </body>
 </html>

@@ -7,11 +7,34 @@ const SHEET_ID = '1cLbTgbluZyWYHRouEgqHQuYQqKexHhu4st9ANzuaxGk';
 const SHEETS_API_KEY = 'AIzaSyBqF-nMxyZMrjmdFbULO9I_j75hXXaiq4A';
 const SHEETS_API_BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
 
+// Check if we're running on Netlify or other production environment
+const isNetlifyOrProduction = () => {
+    const hostname = window.location.hostname;
+    return hostname.includes('netlify.app') || 
+           hostname.includes('netlify.com') || 
+           !hostname.includes('localhost');
+};
+
+// Flag to force using mock data (set to true for Netlify)
+const USE_MOCK_DATA = isNetlifyOrProduction();
+
 /**
  * Initialize Google Sheets API
  */
 async function initSheetsAPI() {
     console.log('Initializing Google Sheets API');
+    
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        console.log('Running on Netlify or production environment - using mock data');
+        await loadMockData();
+        // Show notification to user that mock data is being used
+        if (typeof showNotification === 'function') {
+            showNotification('تم استخدام بيانات تجريبية لعرض التطبيق. البيانات الفعلية غير متاحة حاليًا.', 'info');
+        }
+        return false;
+    }
+    
     try {
         // Test connection by fetching sheet metadata
         const response = await fetch(`${SHEETS_API_BASE_URL}/${SHEET_ID}?key=${SHEETS_API_KEY}`);
@@ -87,6 +110,11 @@ async function loadMockData() {
  * @returns {Promise<Array>} - Array of letter types
  */
 async function getLetterTypes() {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        return mockSettingsData.letterTypes;
+    }
+    
     try {
         // Try to fetch from Google Sheets API
         const response = await fetch(
@@ -121,6 +149,11 @@ async function getLetterTypes() {
  * @returns {Promise<Array>} - Array of letter purposes
  */
 async function getLetterPurposes() {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        return mockSettingsData.letterPurposes;
+    }
+    
     try {
         // Try to fetch from Google Sheets API
         const response = await fetch(
@@ -155,6 +188,11 @@ async function getLetterPurposes() {
  * @returns {Promise<Array>} - Array of letter styles
  */
 async function getLetterStyles() {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        return mockSettingsData.letterStyles;
+    }
+    
     try {
         // Try to fetch from Google Sheets API
         const response = await fetch(
@@ -189,6 +227,11 @@ async function getLetterStyles() {
  * @returns {Promise<Array>} - Array of letter records
  */
 async function getAllLetters() {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        return mockSubmissionsData;
+    }
+    
     try {
         // Try to fetch from Google Sheets API
         const response = await fetch(
@@ -245,6 +288,15 @@ async function getAllLetters() {
  * @returns {Promise<Object>} - Letter data
  */
 async function getLetterById(id) {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        const letter = mockSubmissionsData.find(letter => letter.id === id);
+        if (!letter) {
+            throw new Error(`Letter with ID ${id} not found in mock data`);
+        }
+        return letter;
+    }
+    
     try {
         // First try to get all letters
         const letters = await getAllLetters();
@@ -275,6 +327,19 @@ async function getLetterById(id) {
  * @returns {Promise<Array>} - Array of matching letter records
  */
 async function searchLetters(query) {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        if (!query) {
+            return mockSubmissionsData;
+        }
+        
+        const lowerQuery = query.toLowerCase();
+        return mockSubmissionsData.filter(letter => 
+            letter.id.toLowerCase().includes(lowerQuery) || 
+            letter.recipient.toLowerCase().includes(lowerQuery)
+        );
+    }
+    
     try {
         // Get all letters first
         const letters = await getAllLetters();
@@ -312,6 +377,24 @@ async function searchLetters(query) {
  * @returns {Promise<Array>} - Array of filtered letter records
  */
 async function filterLetters(type, reviewStatus) {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        return mockSubmissionsData.filter(letter => {
+            let matchesType = true;
+            let matchesStatus = true;
+            
+            if (type && type !== 'all') {
+                matchesType = letter.letterType === type;
+            }
+            
+            if (reviewStatus && reviewStatus !== 'all') {
+                matchesStatus = letter.reviewStatus === reviewStatus;
+            }
+            
+            return matchesType && matchesStatus;
+        });
+    }
+    
     try {
         // Get all letters first
         const letters = await getAllLetters();
@@ -361,6 +444,21 @@ async function filterLetters(type, reviewStatus) {
  * @returns {Promise<boolean>} - Success status
  */
 async function updateLetterReviewStatus(id, status, reviewerName, notes) {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        console.log(`Updating letter ${id} review status to ${status} (mock data)`);
+        console.log(`Reviewer: ${reviewerName}`);
+        console.log(`Notes: ${notes}`);
+        
+        // Update mock data
+        const letterIndex = mockSubmissionsData.findIndex(letter => letter.id === id);
+        if (letterIndex !== -1) {
+            mockSubmissionsData[letterIndex].reviewStatus = status;
+        }
+        
+        return true;
+    }
+    
     try {
         // In a real implementation, this would update data in Google Sheets
         // For now, we'll update mock data and log the action
@@ -387,6 +485,19 @@ async function updateLetterReviewStatus(id, status, reviewerName, notes) {
  * @returns {Promise<boolean>} - Success status
  */
 async function deleteLetter(id) {
+    // If we're on Netlify or production, use mock data immediately
+    if (USE_MOCK_DATA) {
+        console.log(`Deleting letter ${id} (mock data)`);
+        
+        // Delete from mock data
+        const letterIndex = mockSubmissionsData.findIndex(letter => letter.id === id);
+        if (letterIndex !== -1) {
+            mockSubmissionsData.splice(letterIndex, 1);
+        }
+        
+        return true;
+    }
+    
     try {
         // In a real implementation, this would delete data from Google Sheets
         // For now, we'll delete from mock data and log the action

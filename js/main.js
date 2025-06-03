@@ -682,10 +682,96 @@ function showLoading(show) {
 
 /**
  * Show notification
+ * @param {string} message - Notification message
+ * @param {string} type - Notification type (info, success, warning, error)
  */
 function showNotification(message, type = 'info') {
-    // This is a placeholder - in a real implementation, this would show a toast notification
-    alert(message);
+    // Create notification element if it doesn't exist
+    let notificationContainer = document.getElementById('notification-container');
+    
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '9999';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.padding = '15px 20px';
+    notification.style.marginBottom = '10px';
+    notification.style.borderRadius = '5px';
+    notification.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    notification.style.transition = 'all 0.3s ease';
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(50px)';
+    
+    // Set background color based on type
+    switch (type) {
+        case 'success':
+            notification.style.backgroundColor = '#28a745';
+            notification.style.color = 'white';
+            break;
+        case 'warning':
+            notification.style.backgroundColor = '#fd7e14';
+            notification.style.color = 'white';
+            break;
+        case 'error':
+            notification.style.backgroundColor = '#dc3545';
+            notification.style.color = 'white';
+            break;
+        default: // info
+            notification.style.backgroundColor = '#17a2b8';
+            notification.style.color = 'white';
+    }
+    
+    // Add message
+    notification.textContent = message;
+    
+    // Add close button
+    const closeButton = document.createElement('span');
+    closeButton.textContent = '×';
+    closeButton.style.marginLeft = '10px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.float = 'left';
+    closeButton.style.fontWeight = 'bold';
+    closeButton.style.fontSize = '20px';
+    closeButton.style.lineHeight = '1';
+    
+    closeButton.addEventListener('click', () => {
+        removeNotification(notification);
+    });
+    
+    notification.appendChild(closeButton);
+    
+    // Add to container
+    notificationContainer.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        removeNotification(notification);
+    }, 5000);
+    
+    function removeNotification(notification) {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(50px)';
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }
 }
 
 /**

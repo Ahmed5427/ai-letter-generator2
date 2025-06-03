@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء خطاب جديد - AI Letter Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="https://www.netzero.sa/wp-content/uploads/2023/09/cropped-netzero-favicon-32x32.png" type="image/png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="logo-container">
+                <img src="https://www.netzero.sa/wp-content/uploads/2023/09/netzero-logo.png" alt="Netzero Logo" class="logo">
+                <span class="app-title">AI Letter Generator</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">الرئيسية</a></li>
+                <li><a href="create-letter.html" class="active">إنشاء خطاب جديد</a></li>
+                <li><a href="letter-records.html">سجل الخطابات</a></li>
+                <li><a href="review-letter.html">مراجعة خطاب</a></li>
+            </ul>
+            <div class="theme-switcher">
+                <button id="theme-toggle-button">تبديل الوضع</button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>إنشاء خطاب جديد</h1>
+
+        <section id="letter-data-section">
+            <h2>بيانات الخطاب</h2>
+            <form id="create-letter-form">
+                <div class="form-group">
+                    <label for="letter-type">نوع الخطاب:</label>
+                    <select id="letter-type" name="letter-type" required>
+                        <option value="">اختر نوع الخطاب...</option>
+                        <!-- Options will be populated by JS from Google Sheet 'Settings' Col B -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="letter-purpose">الغرض من الخطاب:</label>
+                    <select id="letter-purpose" name="letter-purpose" required>
+                        <option value="">اختر الغرض...</option>
+                        <!-- Options will be populated by JS from Google Sheet 'Settings' Col C -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="letter-style">الأسلوب:</label>
+                    <select id="letter-style" name="letter-style" required>
+                        <option value="">اختر الأسلوب...</option>
+                        <!-- Options will be populated by JS from Google Sheet 'Settings' Col G -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>هل هذه أول مراسلة؟</label>
+                    <div class="radio-group">
+                        <input type="radio" id="is-first-yes" name="is-first" value="true" required>
+                        <label for="is-first-yes">نعم</label>
+                        <input type="radio" id="is-first-no" name="is-first" value="false" required>
+                        <label for="is-first-no">لا</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="recipient">المرسل إليه:</label>
+                    <input type="text" id="recipient" name="recipient" required>
+                </div>
+                <div class="form-group">
+                    <label for="letter-title">عنوان الخطاب:</label>
+                    <input type="text" id="letter-title" name="letter-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="letter-content-prompt">محتوى الخطاب (النقاط الرئيسية):</label>
+                    <textarea id="letter-content-prompt" name="letter-content-prompt" rows="6" required></textarea>
+                </div>
+                <button type="submit" id="generate-letter-button">إنشاء الخطاب</button>
+            </form>
+        </section>
+
+        <section id="preview-section" style="display: none;"> <!-- Hidden initially -->
+            <h2>معاينة الخطاب</h2>
+            <div class="form-group">
+                <label for="generated-letter-output">الخطاب المُنشأ (قابل للتعديل):</label>
+                <textarea id="generated-letter-output" rows="15"></textarea>
+            </div>
+
+            <div class="template-preview">
+                <h3>معاينة القوالب</h3>
+                <div class="template-options">
+                    <div class="template-option">
+                        <input type="radio" id="template1" name="template" value="template1" required>
+                        <label for="template1">القالب الأول</label>
+                        <a href="https://docs.google.com/document/d/1JjOntjfkO7PJdtgZtOAJer85qVz82N2k/edit?usp=sharing&ouid=108042118332779774564&rtpof=true&sd=true" target="_blank" class="template-link">عرض القالب</a>
+                        <div class="template-preview-image">
+                            <img src="https://via.placeholder.com/300x400?text=Template+1" alt="معاينة القالب الأول" id="template1-preview">
+                        </div>
+                    </div>
+                    <div class="template-option">
+                        <input type="radio" id="template2" name="template" value="template2" required>
+                        <label for="template2">القالب الثاني</label>
+                        <a href="https://docs.google.com/document/d/1fWdNzzEp2kwvtHTclh2l-CmtY3cXaCmh/edit" target="_blank" class="template-link">عرض القالب</a>
+                        <div class="template-preview-image">
+                            <img src="https://via.placeholder.com/300x400?text=Template+2" alt="معاينة القالب الثاني" id="template2-preview">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="save-proceed-button">حفظ ومتابعة</button>
+        </section>
+
+        <!-- Template rendering for PDF generation (hidden) -->
+        <div id="pdf-template-container" style="display: none;">
+            <div id="template1-content" class="pdf-template">
+                <!-- Template 1 structure -->
+                <div class="template-header">
+                    <img src="https://www.netzero.sa/wp-content/uploads/2023/09/netzero-logo.png" alt="Netzero Logo" class="template-logo">
+                    <h2 class="template-title">AI Letter Generator</h2>
+                </div>
+                <div class="template-body">
+                    <div class="template-metadata">
+                        <p class="template-date" id="template1-date"></p>
+                        <p class="template-ref" id="template1-ref"></p>
+                    </div>
+                    <div class="template-recipient" id="template1-recipient"></div>
+                    <h3 class="template-subject" id="template1-subject"></h3>
+                    <div class="template-content" id="template1-content-text"></div>
+                    <div class="template-signature">
+                        <p>مع أطيب التحيات،</p>
+                        <p>AI Letter Generator</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="template2-content" class="pdf-template">
+                <!-- Template 2 structure -->
+                <div class="template-header template2-header">
+                    <img src="https://www.netzero.sa/wp-content/uploads/2023/09/netzero-logo.png" alt="Netzero Logo" class="template-logo">
+                    <div class="template2-header-text">
+                        <h2 class="template-title">AI Letter Generator</h2>
+                        <p class="template-subtitle">مولد الخطابات بالذكاء الاصطناعي</p>
+                    </div>
+                </div>
+                <div class="template-body template2-body">
+                    <div class="template-metadata template2-metadata">
+                        <p class="template-date" id="template2-date"></p>
+                        <p class="template-ref" id="template2-ref"></p>
+                    </div>
+                    <div class="template-recipient template2-recipient" id="template2-recipient"></div>
+                    <h3 class="template-subject template2-subject" id="template2-subject"></h3>
+                    <div class="template-content template2-content" id="template2-content-text"></div>
+                    <div class="template-signature template2-signature">
+                        <p>مع أطيب التحيات،</p>
+                        <p>AI Letter Generator</p>
+                        <img src="https://www.netzero.sa/wp-content/uploads/2023/09/netzero-logo.png" alt="Netzero Logo" class="template-signature-logo">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2025 AI Letter Generator. جميع الحقوق محفوظة.</p>
+    </footer>
+
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>جاري التحميل...</p>
+    </div>
+
+    <script src="js/sheets.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
